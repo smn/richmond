@@ -1,2 +1,3 @@
 carrot==0.10.3
+twisted==10.0.0
 -e git+git@github.com:praekelt/python-ssmi.git#egg=python-ssmi
