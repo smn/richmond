@@ -13,6 +13,8 @@ run `source setup-vritualenv.source` to do the virtualenv hoopla and install the
 Run the twisted plugin like so:
 
     $ export PYTHONPATH=`pwd`/ve/src/python-ssmi/src
-    $ twistd amqp
+    $ twistd -n amqp
 
 For some reason I had to specify the PYTHONPATH manually, not sure if I'm doing stuff wrong or if `virtualenv` & `pip` are failing on me.
+
+Remove the `-n` option to daemonize the application.
