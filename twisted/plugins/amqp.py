@@ -11,12 +11,16 @@ from ssmi.client import (SSMI_USSD_TYPE_NEW, SSMI_USSD_TYPE_EXISTING,
                             SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_TIMEOUT)
 import logging
 
+from carrot.connection import BrokerConnection
+from carrot.messaging import Publisher
+
 
 class SSMIService(object):
     """A Service which can be hooked into a Twisted reactor loop"""
-    def __init__(self, username, password):
+    def __init__(self, username, password, queue):
         self.username = username
         self.password = password
+        self.queue = queue
     
     def register_ssmi(self, ssmi_protocol):
         self.ssmi_client = ssmi_protocol
@@ -37,9 +41,21 @@ class SSMIService(object):
         self.reply(msisdn, "Hello, this is an echo service for testing. "
                             "Reply with whatever. Reply 'quit' to end session.", 
                             SSMI_USSD_TYPE_EXISTING)
+        self.queue.send({
+            "type": SSMI_USSD_TYPE_NEW,
+            "message": message,
+            "msisdn": msisdn,
+        })
     
     def existing_ussd_session(self, msisdn, message):
         message = message.strip()
+        
+        self.queue.send({
+            "type": SSMI_USSD_TYPE_EXISTING,
+            "message": message,
+            "msisdn": msisdn,
+        })
+        
         if message == "quit":
             self.reply(msisdn, "quitting, goodbye!", SSMI_USSD_TYPE_END)
         else:
@@ -47,9 +63,21 @@ class SSMIService(object):
     
     def timed_out_ussd_session(self, msisdn, message):
         logging.debug('%s timed out, removing client' % msisdn)
+        self.queue.send({
+            "type": SSMI_USSD_TYPE_TIMEOUT,
+            "message": message,
+            "msisdn": msisdn,
+        })
+        
     
     def end_ussd_session(self, msisdn, message):
         logging.debug('%s ended the session, removing client' % msisdn)
+        self.queue.send({
+            "type": SSMI_USSD_TYPE_END,
+            "message": message,
+            "msisdn": msisdn,
+        })
+        
     
     def process_ussd(self, msisdn, ussd_type, ussd_phase, message):
         if self.ssmi_client is None:
@@ -101,8 +129,20 @@ class SSMIServiceMaker(object):
             if not options[key]:
                 options[key] = getpass('%s: ' % key)
         
+        connection = BrokerConnection(hostname=options['amqp-host'], 
+                                port=int(options['amqp-port']),
+                                userid=options['amqp-username'],
+                                password=options['amqp-password'],
+                                virtual_host=options['amqp-vhost'])
+        
+        publisher = Publisher(connection=connection,
+                                exchange=options["amqp-exchange"],
+                                routing_key=options["amqp-routing-key"])
+        
         def app_register(ssmi_protocol):
-            return SSMIService(options['ssmi-username'], options['ssmi-password']) \
+            return SSMIService(options['ssmi-username'], 
+                                options['ssmi-password'],
+                                publisher) \
                                 .register_ssmi(ssmi_protocol)
         
         return internet.TCPClient(options['ssmi-host'], int(options['ssmi-port']), 
