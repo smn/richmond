@@ -2,3 +2,4 @@ pip-log.txt
 ve/*
 *.pid
 *.log
+*.pyc
