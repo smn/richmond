@@ -1,4 +1,4 @@
-virtualenv --no-site-packages -q ./ve/
+virtualenv -q ./ve/
 pip install -E ./ve/ -r requirements.pip
 source ./ve/bin/activate
 echo "run 'deactivate' to exit the virtualenv"

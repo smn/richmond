@@ -28,72 +28,29 @@ class SSMIService(object):
                                     password=self.password,
                                     ussd_callback=self.process_ussd, 
                                     sms_callback=self.process_sms)
-            
     
-    def reply(self, msisdn, text, reply_type):
-        return self.ssmi_client.send_ussd(msisdn, text, reply_type)
-    
-    def process_sms(self, *args):
-        """Process an SMS message received in reply to an SMS we sent out."""
-        pass
-    
-    def new_ussd_session(self, msisdn, message):
-        self.reply(msisdn, "Hello, this is an echo service for testing. "
-                            "Reply with whatever. Reply 'quit' to end session.", 
-                            SSMI_USSD_TYPE_EXISTING)
-        self.queue.send({
-            "type": SSMI_USSD_TYPE_NEW,
-            "message": message,
-            "msisdn": msisdn,
-        })
-    
-    def existing_ussd_session(self, msisdn, message):
-        message = message.strip()
-        
-        self.queue.send({
-            "type": SSMI_USSD_TYPE_EXISTING,
-            "message": message,
-            "msisdn": msisdn,
-        })
-        
-        if message == "quit":
-            self.reply(msisdn, "quitting, goodbye!", SSMI_USSD_TYPE_END)
-        else:
-            self.reply(msisdn, message, SSMI_USSD_TYPE_EXISTING)
-    
-    def timed_out_ussd_session(self, msisdn, message):
-        logging.debug('%s timed out, removing client' % msisdn)
-        self.queue.send({
-            "type": SSMI_USSD_TYPE_TIMEOUT,
-            "message": message,
-            "msisdn": msisdn,
-        })
-        
-    
-    def end_ussd_session(self, msisdn, message):
-        logging.debug('%s ended the session, removing client' % msisdn)
-        self.queue.send({
-            "type": SSMI_USSD_TYPE_END,
-            "message": message,
-            "msisdn": msisdn,
-        })
-        
+    def process_sms(self, *args, **kwargs):
+        raise NotImplementedError, "process_sms not implemented"
     
     def process_ussd(self, msisdn, ussd_type, ussd_phase, message):
         if self.ssmi_client is None:
             log.err('FATAL: client not registered')
             return
         
-        routes = {
-            SSMI_USSD_TYPE_NEW: self.new_ussd_session,
-            SSMI_USSD_TYPE_EXISTING: self.existing_ussd_session,
-            SSMI_USSD_TYPE_TIMEOUT: self.timed_out_ussd_session,
-            SSMI_USSD_TYPE_END: self.end_ussd_session
-        }
+        routes = [
+            SSMI_USSD_TYPE_NEW,
+            SSMI_USSD_TYPE_EXISTING,
+            SSMI_USSD_TYPE_TIMEOUT,
+            SSMI_USSD_TYPE_END,
+        ]
         
-        handler = routes[ussd_type]
-        if handler:
-            handler(msisdn, message)
+        if ussd_type in routes:
+            self.queue.send({
+                'msisdn': msisdn,
+                'ussd_type': ussd_type,
+                'ussd_phase': ussd_phase,
+                'message': message,
+            })
         else:
             log.err('FATAL: No handler available for ussd type %s' % ussd_type)
     
@@ -108,8 +65,8 @@ class Options(usage.Options):
         ["ssmi-port", None, None, "SSMI host's port"],
         ["amqp-host", None, "localhost", "AMQP host"],
         ["amqp-port", None, "5672", "AMQP port"],
-        ["amqp-username", None, "guest", "AMQP username"],
-        ["amqp-password", None, "guest", "AMQP password"],
+        ["amqp-username", None, "richmond", "AMQP username"],
+        ["amqp-password", None, "richmond", "AMQP password"],
         ["amqp-vhost", None, "richmond", "AMQP virtual host"],
         ["amqp-feed", None, "richmond", "AMQP feed"],
         ["amqp-exchange", None, "richmond", "AMQP exchange"],
