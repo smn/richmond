@@ -15,7 +15,7 @@ from twisted.plugin import IPlugin
 import json
 
 from richmond.utils import filter_options_on_prefix
-from richmond.service import RichmondService
+from richmond.service.base import RichmondService
 
 class Options(usage.Options):
     optParameters = [

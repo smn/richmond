@@ -9,11 +9,17 @@ class RichmondService(Service):
     implements(IServiceMaker)
     
     def startService(self):
-        log.msg("starting service")
+        log.msg("starting richmond service")
+        
         self.ssmi = SSMIService()
-        self.ssmi.setServicParent(self)
+        self.ssmi.setName("ssmi")
         self.ssmi.startService()
+        
+        self.amqp = AMQPService()
+        self.amqp.setName("amqp")
+        self.amqp.startService()
 
     def stopService(self):
-        log.msg("stopping service")
+        log.msg("stopping richmond service")
         self.ssmi.stopService()
+        self.amqp.stopService()
