@@ -24,12 +24,12 @@ class AMQPWorker(object):
                                 virtual_host='/richmond')
     
     def create_amqp_consumer(self, connection):
-        return Consumer(connection=connection, queue="richmond", 
-                                exchange="richmond", routing_key="ssmi.send")
+        return Consumer(connection=connection, queue="richmond.receive", 
+                                exchange="richmond", routing_key="ssmi.receive")
     
     def create_amqp_publisher(self, connection):
-        return Publisher(connection=connection, queue="richmond", 
-                                exchange="richmond", routing_key="ssmi.receive")
+        return Publisher(connection=connection, queue="richmond.send", 
+                                exchange="richmond", routing_key="ssmi.send")
     
     def create_logger(self):
         logger = logging.getLogger("amqp-consumer")

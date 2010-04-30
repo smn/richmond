@@ -25,19 +25,21 @@ class Options(usage.Options):
         ["amqp-username", None, "richmond", "AMQP username"],
         ["amqp-password", None, "richmond", "AMQP password"],
         ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
-        ["amqp-queue", None, "richmond", "AMQP queue"],
-        ["amqp-exchange", None, "richmond", "AMQP exchange"],
-        ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
+        ["amqp-send-queue", None, "richmond.send", "AMQP send queue"],
         ["amqp-send-routing-key", None, "ssmi.send", "AMQP routing key"],
+        ["amqp-exchange", None, "richmond", "AMQP exchange"],
+        ["amqp-receive-queue", None, "richmond.receive", "AMQP receive queue"],
+        ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
     ]
 
 
 class Starter(object):
     
-    def __init__(self, username, password, queue_name, exchange_name):
+    def __init__(self, username, password, send_queue_name, receive_queue_name, exchange_name):
         self.username = username
         self.password = password
-        self.queue_name = queue_name
+        self.send_queue_name = send_queue_name
+        self.receive_queue_name = receive_queue_name
         self.exchange_name = exchange_name
         self.connection = None
         self.channel = None
@@ -56,19 +58,25 @@ class Starter(object):
         self.channel = channel
         yield channel.channel_open()
         log.msg("Channel opened")
-        yield channel.queue_declare(queue=self.queue_name)
-        log.msg("Connected to queue richmond")
+        yield channel.queue_declare(queue=self.send_queue_name)
+        log.msg("Connected to receive queue %s" % self.send_queue_name)
+        yield channel.queue_declare(queue=self.receive_queue_name)
+        log.msg("Connected to receive queue %s" % self.receive_queue_name)
         yield channel.exchange_declare(exchange=self.exchange_name, type="direct")
         log.msg("Connected to exchange richmond")
-        yield channel.queue_bind(queue=self.queue_name, 
+        yield channel.queue_bind(queue=self.send_queue_name, 
+                                    exchange=self.exchange_name, 
+                                    routing_key="ssmi.send")
+        log.msg("Bound %s to exchange with routing_key ssmi.send" % self.send_queue_name)
+        yield channel.queue_bind(queue=self.receive_queue_name, 
                                     exchange=self.exchange_name, 
                                     routing_key="ssmi.receive")
-        log.msg("Bound queue to exchange")
+        log.msg("Bound %s to exchange with routing_key ssmi.reveive" % self.receive_queue_name)
         returnValue(channel)
     
     @inlineCallbacks
     def create_consumer(self, channel):
-        reply = yield channel.basic_consume(queue=self.queue_name)
+        reply = yield channel.basic_consume(queue=self.send_queue_name)
         log.msg("Registered the consumer")
         queue = yield self.connection.queue(reply.consumer_tag)
         log.msg("Got a queue: %s" % queue)
@@ -81,7 +89,10 @@ class Starter(object):
         while True:
             log.msg("Waiting for messages")
             msg = yield queue.get()
-            print 'Received: ' + msg.content.body + ' from channel #' + str(channel.id)
+            data = json.loads(msg.content.body)
+            print 'received data', data, 'on', self.receive_queue_name, 'routing_key ssmi.send'
+            if hasattr(self.ssmi_service, 'ssmi_client'):
+                self.ssmi_service.send_ussd(str(data['msisdn']), str(data['message']), str(data['ussd_type']))
             channel.basic_ack(msg.delivery_tag, True)
         returnValue(channel)
     
@@ -97,15 +108,20 @@ class Starter(object):
                             ssmi_password, queue):
         from amqp import SSMIService, SSMIFactory
         
-        queue.setChannel(channel)
-        ssmi_service = SSMIService(ssmi_username, ssmi_password, queue)
+        self.ssmi_service = SSMIService(ssmi_username, ssmi_password, queue)
         
         def app_register(ssmi_protocol):
-            return ssmi_service.register_ssmi(ssmi_protocol)
+            return self.ssmi_service.register_ssmi(ssmi_protocol)
         
         yield reactor.connectTCP(ssmi_host, ssmi_port, 
                             SSMIFactory(app_register_callback=app_register))
-        
+        returnValue(channel)
+    
+    @inlineCallbacks
+    def attach_channel(self, channel):
+        self.ssmi_service.setChannel(channel)
+        yield channel
+        returnValue(channel)
 
 
 class DumbQueue(object):
@@ -117,8 +133,11 @@ class DumbQueue(object):
         self.channel = channel
     
     def send(self, data):
+        str_data = json.dumps(data)
+        log.msg("publishing %s to exchange %s with routing key %s" % 
+                    (str_data, self.exchange_name, self.routing_key))
         self.channel.basic_publish(exchange=self.exchange_name, 
-                                    content=Content(json.dumps(data)), 
+                                    content=Content(str_data), 
                                     routing_key=self.routing_key)
 
 
@@ -149,19 +168,21 @@ class AMQPServiceMaker(object):
         starter = Starter(
             username = options['amqp-username'],
             password = options['amqp-password'],
-            queue_name = options['amqp-queue'],
+            send_queue_name = options['amqp-send-queue'],
+            receive_queue_name = options['amqp-receive-queue'],
             exchange_name = options['amqp-exchange']
         )
         
+        queue = DumbQueue(options['amqp-exchange'], 
+                            options['amqp-receive-routing-key'])
         delegate = TwistedDelegate()
         onConnect = Deferred()
         onConnect.addCallback(starter.got_connection)
         onConnect.addCallback(starter.is_authenticated)
+        onConnect.addCallback(starter.start_ssmi_client, ssmi_host, ssmi_port, ssmi_username, ssmi_password, queue)
         onConnect.addCallback(starter.create_consumer)
         onConnect.addCallback(starter.create_publisher)
-        queue = DumbQueue(options['amqp-exchange'], 
-                            options['amqp-receive-routing-key'])
-        onConnect.addCallback(starter.start_ssmi_client, ssmi_host, ssmi_port, ssmi_username, ssmi_password, queue)
+        onConnect.addCallback(starter.attach_channel)
         
         def failed_connection(thefailure):
             thefailure.trap(error.ConnectionRefusedError)

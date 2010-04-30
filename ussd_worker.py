@@ -1,3 +1,4 @@
+import json
 from worker import AMQPWorker
 from ssmi.client import (SSMI_USSD_TYPE_NEW, SSMI_USSD_TYPE_EXISTING, 
                             SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_TIMEOUT)
@@ -14,8 +15,9 @@ class USSDWorker(AMQPWorker):
             "message": text,
             "ussd_type": reply_type
         }
-        self.logger.debug("SEND: %s" % str(data))
-        self.publisher.send(data)
+        raw_data = json.dumps(data)
+        self.logger.debug("SEND: %s" % raw_data)
+        self.publisher.send(raw_data)
     
     def process_sms(self, *args):
         raise NotImplementedError
@@ -32,10 +34,11 @@ class USSDWorker(AMQPWorker):
     def end_ussd_session(self, msisdn, message):
         raise NotImplementedError
     
-    def handle_message(self, data):
+    def handle_message(self, raw_data):
         
-        self.logger.debug("RECEIVED: %s" % str(data))
-        
+        self.logger.debug("RECEIVED: %s" % raw_data)
+        data = json.loads(raw_data)
+        print 'json data:', data
         msisdn = data['msisdn']
         ussd_type = data['ussd_type']
         ussd_phase = data['ussd_phase']

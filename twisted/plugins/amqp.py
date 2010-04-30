@@ -30,6 +30,9 @@ class SSMIService(object):
         self.password = password
         self.queue = queue
     
+    def setChannel(self, channel):
+        self.queue.channel = channel
+    
     def register_ssmi(self, ssmi_protocol):
         self.ssmi_client = ssmi_protocol
         self.ssmi_client.app_setup(username=self.username, 
