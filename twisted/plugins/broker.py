@@ -14,6 +14,8 @@ from twisted.application import internet
 from twisted.plugin import IPlugin
 import json
 
+from utils import filter_options_on_prefix
+
 class Options(usage.Options):
     optParameters = [
         ["config", "c", None, "Read options from config file"],
@@ -25,6 +27,7 @@ class Options(usage.Options):
         ["amqp-port", None, 5672, "AMQP port", int],
         ["amqp-username", None, "richmond", "AMQP username"],
         ["amqp-password", None, "richmond", "AMQP password"],
+        ["amqp-spec", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
         ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
         ["amqp-send-queue", None, "richmond.send", "AMQP send queue"],
         ["amqp-send-routing-key", None, "ssmi.send", "AMQP routing key"],
@@ -63,7 +66,6 @@ class Options(usage.Options):
 
 
 class Starter(object):
-    
     def __init__(self, username, password, send_queue_name, receive_queue_name, exchange_name):
         self.username = username
         self.password = password
@@ -172,26 +174,35 @@ class DumbQueue(object):
 
 class AMQPServiceMaker(object):
     implements(IServiceMaker, IPlugin)
-    tapname = "broker"
-    description = "Connect to AMQP broker"
+    tapname = "richmond"
+    description = "Connect to SSMI to AMQP broker"
     options = Options
+    
+    def amqp_options(self, options):
+        return filter_options_on_prefix(options, "amqp")
+    
+    def ssmi_options(self, options):
+        return filter_options_on_prefix(options, "ssmi")
     
     def makeService(self, options):
         delegate = TwistedDelegate()
         onConn = Deferred()
         
-        host = options['amqp-host']
-        port = options['amqp-port']
-        user = options['amqp-username']
-        password = options['amqp-password']
-        vhost = options['amqp-vhost']
-        spec = 'amqp-spec-0-8.xml'  # for some reason txAMQP wants to load the 
+        amqp_options = self.amqp_options(options)
+        ssmi_options = self.ssmi_options(options)
+        
+        host = amqp_options['host']
+        port = amqp_options['port']
+        user = amqp_options['username']
+        password = amqp_options['password']
+        vhost = amqp_options['vhost']
+        spec = amqp_options['spec']  # for some reason txAMQP wants to load the 
                                     # spec each time it starts
         
-        ssmi_host = options['ssmi-host']
-        ssmi_port = options['ssmi-port']
-        ssmi_username = options['ssmi-username']
-        ssmi_password = options['ssmi-password']
+        ssmi_host = ssmi_options['host']
+        ssmi_port = ssmi_options['port']
+        ssmi_username = ssmi_options['username']
+        ssmi_password = ssmi_options['password']
         
         
         starter = Starter(
