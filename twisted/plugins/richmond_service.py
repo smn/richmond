@@ -9,13 +9,12 @@ from txamqp.queue import Empty
 from twisted.python import usage, log
 from twisted.internet import error, protocol, reactor
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
-from twisted.application.service import IServiceMaker
+from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
 from twisted.plugin import IPlugin
 import json
 
 from richmond.utils import filter_options_on_prefix
-from richmond.service.base import RichmondService
 
 class Options(usage.Options):
     optParameters = [
@@ -204,7 +203,7 @@ class AMQPServiceMaker(object):
         ssmi_port = ssmi_options['port']
         ssmi_username = ssmi_options['username']
         ssmi_password = ssmi_options['password']
-        
+                
         
         starter = Starter(
             username = options['amqp-username'],
@@ -235,6 +234,14 @@ class AMQPServiceMaker(object):
         factory = protocol._InstanceFactory(reactor, prot, onConnect)
 
         # return internet.TCPClient(host, port, factory)
-        return RichmondService()
+       
+        from richmond.service.amqp_service import AMQPService
+        from richmond.service.ssmi_service import SSMIService
+         
+        multi_service = MultiService()
+        multi_service.addService(SSMIService(ssmi_username, ssmi_password,
+                                                ssmi_host, ssmi_port))
+        multi_service.addService(AMQPService())
+        return multi_service
 
 serviceMaker = AMQPServiceMaker()
