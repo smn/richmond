@@ -5,14 +5,22 @@ from twisted.python import usage
 from twisted.plugin import IPlugin
 from twisted.application import internet
 from twisted.application.service import IServiceMaker
+# from twisted.internet.protocol import ClientCreator
+from twisted.internet import reactor, task, defer
+
+from carrot.connection import BrokerConnection
+from carrot.messaging import Consumer, Publisher
+
+
+# from txamqp.protocol import AMQClient
+# from txamqp.client import TwistedDelegate
+# from txamqp.content import Content
 
 from ssmi.client import SSMIFactory
 from ssmi.client import (SSMI_USSD_TYPE_NEW, SSMI_USSD_TYPE_EXISTING, 
                             SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_TIMEOUT)
 import logging
 
-from carrot.connection import BrokerConnection
-from carrot.messaging import Publisher
 
 
 class SSMIService(object):
@@ -28,6 +36,9 @@ class SSMIService(object):
                                     password=self.password,
                                     ussd_callback=self.process_ussd, 
                                     sms_callback=self.process_sms)
+    
+    def send_ussd(self, msisdn, text, reply_type):
+        return self.ssmi_client.send_ussd(msisdn, text, reply_type)
     
     def process_sms(self, *args, **kwargs):
         raise NotImplementedError, "process_sms not implemented"
@@ -67,10 +78,11 @@ class Options(usage.Options):
         ["amqp-port", None, "5672", "AMQP port"],
         ["amqp-username", None, "richmond", "AMQP username"],
         ["amqp-password", None, "richmond", "AMQP password"],
-        ["amqp-vhost", None, "richmond", "AMQP virtual host"],
+        ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
         ["amqp-feed", None, "richmond", "AMQP feed"],
         ["amqp-exchange", None, "richmond", "AMQP exchange"],
-        ["amqp-routing-key", None, "ssmi", "AMQP routing key"],
+        ["amqp-receive-routing-key", None, "ssmi.ussd.receive", "AMQP incoming routing key"],
+        ["amqp-send-routing-key", None, "ssmi.ussd.send", "AMQP outgoing routing key"],
     ]
 
 
@@ -94,14 +106,41 @@ class SSMIServiceMaker(object):
         
         publisher = Publisher(connection=connection,
                                 exchange=options["amqp-exchange"],
-                                routing_key=options["amqp-routing-key"])
+                                routing_key=options["amqp-send-routing-key"])
+        
+        consumer = Consumer(connection=connection,
+                                exchange=options["amqp-exchange"],
+                                routing_key=options["amqp-receive-routing-key"])
+        
+        ssmi_service = SSMIService(options['ssmi-username'], 
+                                    options['ssmi-password'], publisher)
+        
+        def handle_message(data, message):
+            logging.debug("inlineCallback received: %s" % str(data))
+            ssmi_service.send_ussd(data['msisdn'], data['message'], data['ussd_type'])
+            message.ack()
+        
+        # consumer.register_callback(handle_message)
+        # 
+        # @defer.inlineCallbacks
+        # def synchronouse_consumer_loop(consumer):
+        #     for message in consumer.iterconsume():
+        #         yield message
         
         def app_register(ssmi_protocol):
-            return SSMIService(options['ssmi-username'], 
-                                options['ssmi-password'],
-                                publisher) \
-                                .register_ssmi(ssmi_protocol)
+            return ssmi_service.register_ssmi(ssmi_protocol)
         
+        # d = defer.Deferred()
+        # d.addCallback(synchronouse_consumer_loop)
+        # reactor.callLater(3, d.callback, consumer)
+        
+        # # FIXME: ooh my, I don't like the look of txamqp
+        # delegate = TwistedDelegate()
+        # d = ClientCreator(reactor, AMQClient, delegate=delegate, 
+        #                     vhost=options["amqp-vhost"],spec=spec)\
+        #                     .connectTCP(options["amqp-host"], options["amqp-port"])
+        # d.addCallback(gotConnection, options["amqp-username"], options["amqp-password"])
+        # 
         return internet.TCPClient(options['ssmi-host'], int(options['ssmi-port']), 
                             SSMIFactory(app_register_callback=app_register))
 

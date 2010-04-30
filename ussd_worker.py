@@ -15,7 +15,7 @@ class USSDWorker(AMQPWorker):
             "ussd_type": reply_type
         }
         self.logger.debug("SEND: %s" % str(data))
-        # self.publisher.send(data)
+        self.publisher.send(data)
     
     def process_sms(self, *args):
         raise NotImplementedError

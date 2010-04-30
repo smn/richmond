@@ -12,10 +12,10 @@ connection = BrokerConnection(hostname="localhost",
                         port=int(5672),
                         userid='richmond',
                         password='richmond',
-                        virtual_host='richmond')
+                        virtual_host='/richmond')
 
 consumer = Consumer(connection=connection, queue="richmond", 
-                        exchange="richmond", routing_key="ssmi")
+                        exchange="richmond", routing_key="ssmi.receive")
 
 def log_message_and_ack(message_data, message):
     logger.debug(message_data)
