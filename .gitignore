@@ -1,6 +1,6 @@
 pip-log.txt
 ve/*
-*.pid
-*.log
+tmp/*
+logs/*
 *.pyc
 dropin.cache
