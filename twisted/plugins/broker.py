@@ -16,6 +16,7 @@ import json
 
 class Options(usage.Options):
     optParameters = [
+        ["config", "c", None, "Read options from config file"],
         ["ssmi-username", None, None, "SSMI username"],
         ["ssmi-password", None, None, "SSMI password"],
         ["ssmi-host", None, None, "SSMI host"],
@@ -31,6 +32,34 @@ class Options(usage.Options):
         ["amqp-receive-queue", None, "richmond.receive", "AMQP receive queue"],
         ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
     ]
+    
+    def opt_config(self, path):
+        """
+        Read the options from a config file rather than command line, uses
+        the ConfigParser from stdlib. Section headers are prepended to the
+        options and together make up the command line parameter:
+        
+            [amqp]
+            host: localhost
+            port: 5672
+        
+        Equals to
+        
+            twistd ... --amqp-host=localhost --amqp-port=5672
+        
+        """
+        import ConfigParser
+        config = ConfigParser.ConfigParser()
+        config.readfp(open(path))
+        for section in config.sections():
+            for option in config.options(section):
+                parameter_name = '%s-%s' % (section, option)
+                # don't need to do getint / getfloat etc... here, Twisted's
+                # usage.Options does the validation / coerce stuff for us
+                parameter_value = config.get(section, option)
+                dispatcher = self._dispatch[parameter_name]
+                dispatcher.dispatch(parameter_name, parameter_value)
+    opt_c = opt_config
 
 
 class Starter(object):
