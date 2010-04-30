@@ -14,7 +14,8 @@ from twisted.application import internet
 from twisted.plugin import IPlugin
 import json
 
-from utils import filter_options_on_prefix
+from richmond.utils import filter_options_on_prefix
+from richmond.service import RichmondService
 
 class Options(usage.Options):
     optParameters = [
@@ -233,7 +234,7 @@ class AMQPServiceMaker(object):
         prot = AMQClient(delegate, vhost, txamqp.spec.load(spec))
         factory = protocol._InstanceFactory(reactor, prot, onConnect)
 
-        return internet.TCPClient(host, port, factory)
-
+        # return internet.TCPClient(host, port, factory)
+        return RichmondService()
 
 serviceMaker = AMQPServiceMaker()

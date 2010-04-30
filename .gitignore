@@ -4,3 +4,4 @@ tmp/*
 logs/*
 *.pyc
 dropin.cache
+*.swp
