@@ -3,7 +3,7 @@ from zope.interface import implements
 from twisted.python import log
 import logging
 from twisted.application.service import IServiceMaker, Service
-from twisted.internet import reactor, protocol
+from twisted.internet import reactor, protocol, defer
 from ssmi.client import SSMIFactory, SSMIClient
 
 class RichmondSSMIProtocol(SSMIClient):
@@ -21,6 +21,14 @@ class RichmondSSMIProtocol(SSMIClient):
         # ugh, can't do normal super() call because twisted's protocol.Factory
         # is an old style class that doesn't subclass object.
         SSMIClient.__init__(self)
+    
+    def connectionMade(self, *args, **kwargs):
+        SSMIClient.connectionMade(self, *args, **kwargs)
+        self.factory.onConnectionMade.callback(self)
+    
+    def connectionLost(self, *args, **kwargs):
+        SSMIClient.connectionLost(self, *args, **kwargs)
+        self.factory.onConnectionLost.callback(self)
     
 
 class RichmondSSMIFactory(SSMIFactory):
@@ -64,11 +72,17 @@ class SSMIService(Service):
         self.host = host
         self.port = port
         self.callback_class = callback_class
+        
+        self.onConnectionMade = defer.Deferred()
+        self.onConnectionLost = defer.Deferred()
+        
         if not isinstance(self.port, int):
             raise RuntimeError, 'port should be an integer'
     
     def startService(self):
         factory = RichmondSSMIFactory(self.username, self.password, self.callback_class)
+        factory.onConnectionMade = self.onConnectionMade
+        factory.onConnectionLost = self.onConnectionLost
         self.client_connection = reactor.connectTCP(self.host, self.port, factory)
         log.msg("starting ssmi service")
     
