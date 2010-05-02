@@ -62,6 +62,7 @@ class Options(usage.Options):
                 parameter_value = config.get(section, option)
                 dispatcher = self._dispatch[parameter_name]
                 dispatcher.dispatch(parameter_name, parameter_value)
+        
     opt_c = opt_config
 
 
