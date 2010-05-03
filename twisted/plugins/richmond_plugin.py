@@ -87,6 +87,25 @@ class USSDCallback(ssmi_service.SSMICallback):
         else:
             self.publisher.send(data)
 
+class SSMIConsumer(amqp_service.AMQPConsumer):
+    
+    ssmi_client = None
+    
+    def consume_data(self, channel, message):
+        log.msg("Received data: '%s'" % message.content.body, 
+                                        logLevel=logging.DEBUG)
+        data = json.loads(message.content.body)
+        if not self.ssmi_client:
+            log.err("No SSMI gateway available, discarding: %s" % data)
+        else:
+            self.ssmi_client.send_ussd(
+                str(data['msisdn']),    # str everything because the SSMIClient
+                str(data['message']),   # isn't happy with Unicode
+                str(data['ussd_type']))
+            channel.basic_ack(message.delivery_tag, True)
+    
+
+
 class RichmondServiceMaker(object):
     implements(IServiceMaker, IPlugin)
     tapname = "richmond"
@@ -112,12 +131,17 @@ class RichmondServiceMaker(object):
                                             amqp_options['password'],
                                             amqp_options['spec'],
                                             amqp_options['vhost'],
+                                            consumer_class=SSMIConsumer
                                             )
         amqp_srv.setServiceParent(multi_service)
         
         def consumer_ready(ssmi_client):
-            amqp_srv.consumer.join_queue(amqp_options['send-queue'],
-                                            amqp_options['send-routing-key'])
+            amqp_srv.consumer.ssmi_client = ssmi_client
+            amqp_srv.consumer.join_queue(
+                                        amqp_options['exchange'],
+                                        "direct",
+                                        amqp_options['send-queue'],
+                                        amqp_options['send-routing-key'])
             return ssmi_client
         
         def publisher_ready(ssmi_client):

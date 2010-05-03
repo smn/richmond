@@ -1,5 +1,6 @@
 import json
-from worker import AMQPWorker
+# from richmond.workers.base import AMQPWorker
+from base import AMQPWorker
 from ssmi.client import (SSMI_USSD_TYPE_NEW, SSMI_USSD_TYPE_EXISTING, 
                             SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_TIMEOUT)
 
