@@ -12,10 +12,10 @@ class RichmondSSMIProtocol(SSMIClient):
     work with callbacks to do authorization
     """
     def __init__(self, username, password, handler_class):
-        callback = handler_class()
-        self._ussd_callback = callback.ussd_callback
-        self._sms_callback = callback.sms_callback
-        self._errback = callback.errback
+        self.callback = handler_class()
+        self._ussd_callback = self.callback.ussd_callback
+        self._sms_callback = self.callback.sms_callback
+        self._errback = self.callback.errback
         self._username = username
         self._password = password
         # ugh, can't do normal super() call because twisted's protocol.Factory

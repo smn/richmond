@@ -68,21 +68,24 @@ class Options(usage.Options):
     opt_c = opt_config
 
 
-class MockedQueue(object):
-    def send(self, data):
-        log.msg("Publishing %s to the queue." % str(data))
-
 class USSDCallback(ssmi_service.SSMICallback):
     
-    queue = MockedQueue()
+    publisher = None
+    
+    def publish_to(self, publisher):
+        self.publisher = publisher
     
     def ussd_callback(self, msisdn, ussd_type, ussd_phase, message):
-        self.queue.send({
-                'msisdn': msisdn,
-                'ussd_type': ussd_type,
-                'ussd_phase': ussd_phase,
-                'message': message,
-            })
+        data = {
+            'msisdn': msisdn,
+            'ussd_type': ussd_type,
+            'ussd_phase': ussd_phase,
+            'message': message,
+        }
+        if not self.publisher:
+            log.err("No queue set for publishing, discarding: %s" % data)
+        else:
+            self.publisher.send(data)
 
 class RichmondServiceMaker(object):
     implements(IServiceMaker, IPlugin)
@@ -112,12 +115,17 @@ class RichmondServiceMaker(object):
                                             )
         amqp_srv.setServiceParent(multi_service)
         
-        def start_consumer(ssmi_client):
-            amqp_srv.consumer.join_channel("some queue", "bound to some routing.key")
+        def consumer_ready(ssmi_client):
+            amqp_srv.consumer.join_queue(amqp_options['send-queue'],
+                                            amqp_options['send-routing-key'])
+            return ssmi_client
         
-        def start_publisher(ssmi_client):
-            amqp_srv.publisher.publish_to("some exchange", "with some routing.key")
-            ssmi_client.publish_to(amqp_srv.publisher)
+        def publisher_ready(ssmi_client):
+            amqp_srv.publisher.publish_to(
+                            exchange=amqp_options['exchange'],
+                            routing_key=amqp_options['receive-routing-key'])
+            ssmi_client.callback.publish_to(amqp_srv.publisher)
+            return ssmi_client
         
         ssmi_srv = ssmi_service.SSMIService(ssmi_options['username'], 
                                             ssmi_options['password'],
@@ -128,8 +136,8 @@ class RichmondServiceMaker(object):
         
         # start amqp consumer & publisher after we've successfully connected
         # to the SSMI gateway
-        ssmi_srv.onConnectionMade.addCallback(start_consumer)
-        ssmi_srv.onConnectionMade.addCallback(start_publisher)
+        ssmi_srv.onConnectionMade.addCallback(consumer_ready)
+        ssmi_srv.onConnectionMade.addCallback(publisher_ready)
         
         return multi_service
 
