@@ -1,7 +1,7 @@
 from zope.interface import implements
 
 from twisted.python import log
-import logging
+from twisted.python.log import logging
 from twisted.application.service import IServiceMaker, Service
 from twisted.internet import reactor, protocol, defer
 from ssmi.client import SSMIFactory, SSMIClient
