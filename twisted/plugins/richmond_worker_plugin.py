@@ -18,6 +18,8 @@ from richmond.service import ssmi_service
 from richmond.service import amqp_service
 from richmond.utils import filter_options_on_prefix
 
+from ssmi.client import SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_NEW
+
 class Options(usage.Options):
     optParameters = [
         ["config", "c", None, "Read options from config file"],
@@ -65,7 +67,27 @@ class Options(usage.Options):
 
 
 class PublishingConsumer(amqp_service.AMQPConsumer):
-    pass
+    publisher = None
+    def set_publisher(self, publisher):
+        log.msg("PublishingConsumer will publish to: %s" % publisher)
+        self.publisher = publisher
+    
+    def consume_data(self, message):
+        if self.publisher:
+            data = json.loads(message.content.body)
+            if data['ussd_type'] == SSMI_USSD_TYPE_NEW:
+                self.publisher.send({
+                    "msisdn": data['msisdn'],
+                    "message": "so long and thanks for all the fish",
+                    "ussd_type": SSMI_USSD_TYPE_END
+                })
+            else:
+                log.msg("Ignore message: %s" % self.data)
+            self.channel.basic_ack(message.delivery_tag, True)
+        else:
+            log.msg("Received data: '%s' but publisher is missing" % 
+                                message.content.body, logLevel=logging.DEBUG)
+            
 
 
 class RichmondWorkerServiceMaker(object):
@@ -98,9 +120,13 @@ class RichmondWorkerServiceMaker(object):
         
         @defer.inlineCallbacks
         def publisher_ready(amq_client):
+            log.msg("publisher ready!")
+            log.msg("publisher: %s" % amqp_srv.publisher)
             yield amqp_srv.publisher.publish_to(
                             exchange=amqp_options['exchange'],
                             routing_key=amqp_options['send-routing-key'])
+            log.msg("specifying for consumer: %s" % amqp_srv.consumer.set_publisher)
+            yield amqp_srv.consumer.set_publisher(amqp_srv.publisher)
             defer.returnValue(amq_client)
         
         

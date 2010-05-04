@@ -7,6 +7,7 @@ from txamqp.client import TwistedDelegate
 from txamqp.queue import Empty
 
 from twisted.python import usage, log
+from twisted.python.log import logging
 from twisted.internet import error, protocol, reactor
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
 from twisted.application.service import IServiceMaker, MultiService, Application

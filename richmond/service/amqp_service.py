@@ -18,6 +18,8 @@ class AMQPService(Service):
         self.password = password
         self.vhost = vhost
         self.spec = spec
+        self.consumer_class = consumer_class
+        self.publisher_class = publisher_class
         self.onConnectionMade = defer.Deferred()
         
         # NOTE: order is important
@@ -39,13 +41,13 @@ class AMQPService(Service):
     @defer.inlineCallbacks
     def start_consumer(self, client):
         yield None # crazy
-        self.consumer = AMQPConsumer(client)
+        self.consumer = self.consumer_class(client)
         defer.returnValue(client)
     
     @defer.inlineCallbacks
     def start_publisher(self, client):
         yield None # crazy
-        self.publisher = AMQPPublisher(client)
+        self.publisher = self.publisher_class(client)
         defer.returnValue(client)
     
     def startService(self):

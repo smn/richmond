@@ -33,8 +33,6 @@ class RichmondAMQClient(AMQClient):
 
 class AMQPConsumer(object):
     
-    shutdown = False
-    
     def __init__(self, amq_client):
         """Start the consumer"""
         self.amq_client = amq_client
@@ -53,12 +51,14 @@ class AMQPConsumer(object):
                                     exchange_type, queue_name, routing_key)
         log.msg("Got a queue: %s" % queue, logLevel=logging.DEBUG)
         
+        @defer.inlineCallbacks
         def read_messages():
-            while not shutdown:
+            while True:
                 log.msg("Waiting for messages")
                 message = yield queue.get()
                 self.consume_data(message)
-        read_messages()
+        d = read_messages()
+        d.addErrback(lambda f: f.raiseException())
         defer.returnValue(self)
     
     def consume_data(self, message):
