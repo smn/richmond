@@ -73,6 +73,8 @@ def join_queue(client, channel, exchange_name, exchange_type, queue_name,
 
 class AMQPConsumer(object):
     
+    shutdown = False
+    
     def __init__(self, amq_client):
         """Start the consumer"""
         self.amq_client = amq_client
@@ -92,7 +94,7 @@ class AMQPConsumer(object):
         log.msg("Got a queue: %s" % queue, logLevel=logging.DEBUG)
         
         def read_messages():
-            while True:
+            while not shutdown:
                 log.msg("Waiting for messages")
                 message = yield queue.get()
                 self.consume_data(message)
@@ -166,7 +168,9 @@ class AMQPService(Service):
         self.onConnectionMade.addCallback(self.start_publisher)
         self.onConnectionMade.addErrback(lambda f: f.raiseException())
         
+        # we're using a ReconnectingClient
         self.onConnectionLost = defer.Deferred()
+        self.onConnectionLost.addErrback(lambda f: f.raiseException())
         
     
     def authenticate(self, client):
@@ -175,16 +179,12 @@ class AMQPService(Service):
         return client
     
     def start_consumer(self, client):
-        d = defer.Deferred()
         self.consumer = AMQPConsumer(client)
-        reactor.callLater(0, d.callback, client)
-        return d
+        return client
     
     def start_publisher(self, client):
-        d = defer.Deferred()
         self.publisher = AMQPPublisher(client)
-        reactor.callLater(0, d.callback, client)
-        return d
+        return client
     
     def startService(self):
         factory = RichmondAMQPFactory(self.vhost, self.spec)
