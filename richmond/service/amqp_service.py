@@ -62,6 +62,8 @@ class AMQPService(Service):
         log.msg("starting amqp service")
     
     def stopService(self):
+        self.consumer.shutdown()
+        self.publisher.shutdown()
         self.client_connection.disconnect()
         log.msg("stopping amqp service")
     

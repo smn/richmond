@@ -8,6 +8,7 @@ import txamqp.spec
 from txamqp.client import TwistedDelegate
 from txamqp.protocol import AMQClient
 from txamqp.content import Content
+from txamqp import queue
 
 from richmond.amqp.utils import open_channel, join_queue
 
@@ -33,6 +34,8 @@ class RichmondAMQClient(AMQClient):
 
 class AMQPConsumer(object):
     
+    shutting_down = False
+    
     def __init__(self, amq_client):
         """Start the consumer"""
         self.amq_client = amq_client
@@ -47,19 +50,27 @@ class AMQPConsumer(object):
         self.queue_name = queue_name
         self.routing_key = routing_key
         self.channel = yield open_channel(self.amq_client, CONSUMER_CHANNEL_ID)
-        queue = yield join_queue(self.amq_client, self.channel, exchange_name,
+        self.queue = yield join_queue(self.amq_client, self.channel, exchange_name,
                                     exchange_type, queue_name, routing_key)
-        log.msg("Got a queue: %s" % queue, logLevel=logging.DEBUG)
+        log.msg("Got a queue: %s" % self.queue, logLevel=logging.DEBUG)
         
         @defer.inlineCallbacks
         def read_messages():
-            while True:
-                log.msg("Waiting for messages")
-                message = yield queue.get()
-                self.consume_data(message)
+            try:
+                while not self.shutting_down:
+                    log.msg("Waiting for messages")
+                    message = yield self.queue.get()
+                    self.consume_data(message)
+            except queue.Closed, e:
+                log.err("Queue has closed: %s" % e)
         d = read_messages()
         d.addErrback(lambda f: f.raiseException())
         defer.returnValue(self)
+    
+    def shutdown(self,reason="Twisted is shutting down"):
+        self.shutting_down = True
+        self.queue.close()
+        self.channel.close(reason)
     
     def consume_data(self, message):
         log.msg("Received data: '%s' but doing nothing" % message.content.body, 
@@ -82,6 +93,9 @@ class AMQPPublisher(object):
         self.channel = yield open_channel(self.amq_client, PUBLISHER_CHANNEL_ID)
         log.msg("Ready to publish to exchange '%s' with routing key '%s'" % (
             self.exchange, self.routing_key), logLevel=logging.DEBUG)
+    
+    def shutdown(self, reason="Twisted is shutting down"):
+        self.channel.close(reason)
     
     def send(self, data):
         log.msg("Publishing '%s' to exchange '%s' with routing key '%s'" % (
