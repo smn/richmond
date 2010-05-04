@@ -91,7 +91,7 @@ class SSMIConsumer(amqp_service.AMQPConsumer):
     
     ssmi_client = None
     
-    def consume_data(self, channel, message):
+    def consume_data(self, message):
         log.msg("Received data: '%s'" % message.content.body, 
                                         logLevel=logging.DEBUG)
         data = json.loads(message.content.body)
@@ -102,7 +102,7 @@ class SSMIConsumer(amqp_service.AMQPConsumer):
                 str(data['msisdn']),    # str everything because the SSMIClient
                 str(data['message']),   # isn't happy with Unicode
                 str(data['ussd_type']))
-            channel.basic_ack(message.delivery_tag, True)
+            self.channel.basic_ack(message.delivery_tag, True)
     
 
 

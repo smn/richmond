@@ -11,6 +11,9 @@ from twisted.python import log
 from twisted.internet import reactor, defer, protocol
 from twisted.application.service import IServiceMaker, Service
 
+CONSUMER_CHANNEL_ID = 1
+PUBLISHER_CHANNEL_ID = 2
+
 class RichmondAMQClient(AMQClient):
     
     def connectionMade(self, *args, **kwargs):
@@ -38,7 +41,7 @@ class AMQPConsumer(object):
         self.queue_name = queue_name
         self.routing_key = routing_key
         log.msg("opening channel")
-        self.channel = yield self.amq_client.channel(1)
+        self.channel = yield self.amq_client.channel(CONSUMER_CHANNEL_ID)
         yield self.channel.channel_open()
         log.msg("Channel opened", logLevel=logging.DEBUG)
         
@@ -93,8 +96,8 @@ class AMQPPublisher(object):
         self.exchange = exchange
         self.routing_key = routing_key
         log.msg("opening channel", logLevel=logging.DEBUG)
-        self.channel = yield self.amq_client.channel(1)
-        # yield self.channel.channel_open()
+        self.channel = yield self.amq_client.channel(PUBLISHER_CHANNEL_ID)
+        yield self.channel.channel_open()
         log.msg("Channel opened", logLevel=logging.DEBUG)
         log.msg("Ready to publish to exchange '%s' with routing key '%s'" % (
             self.exchange, self.routing_key), logLevel=logging.DEBUG)
