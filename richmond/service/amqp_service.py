@@ -30,19 +30,23 @@ class AMQPService(Service):
         self.onConnectionLost = defer.Deferred()
         self.onConnectionLost.addErrback(lambda f: f.raiseException())
         
-    
+    @defer.inlineCallbacks
     def authenticate(self, client):
-        client.authenticate(self.username, self.password)
+        yield client.authenticate(self.username, self.password)
         log.msg("Authenticated user %s" % self.username)
-        return client
+        defer.returnValue(client)
     
+    @defer.inlineCallbacks
     def start_consumer(self, client):
+        yield None # crazy
         self.consumer = AMQPConsumer(client)
-        return client
+        defer.returnValue(client)
     
+    @defer.inlineCallbacks
     def start_publisher(self, client):
+        yield None # crazy
         self.publisher = AMQPPublisher(client)
-        return client
+        defer.returnValue(client)
     
     def startService(self):
         factory = RichmondAMQPFactory(self.vhost, self.spec)

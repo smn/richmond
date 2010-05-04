@@ -38,7 +38,7 @@ class AMQPConsumer(object):
     def __init__(self, amq_client):
         """Start the consumer"""
         self.amq_client = amq_client
-        log.msg("Started AMQPConsumer")
+        log.msg("Started consumer")
     
     @defer.inlineCallbacks
     def join_queue(self, exchange_name, exchange_type, queue_name, routing_key):
@@ -86,14 +86,16 @@ class AMQPPublisher(object):
     def send(self, data):
         log.msg("Publishing '%s' to exchange '%s' with routing key '%s'" % (
             data, self.exchange, self.routing_key))
+        message = Content(json.dumps(data))
+        message['delivery mode'] = 2
         self.channel.basic_publish(exchange=self.exchange, 
-                                        content=Content(json.dumps(data)), 
+                                        content=message, 
                                         routing_key=self.routing_key)
         
     
 
 
-class RichmondAMQPFactory(protocol.ReconnectingClientFactory):
+class RichmondAMQPFactory(protocol.ClientFactory):
     
     protocol = RichmondAMQClient
     

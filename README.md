@@ -23,10 +23,10 @@ Make sure you have configured your login credentials & virtual host stuff in Rab
     $ rabbitmqctl -n rabbit@localhost add_user richmond richmond
     Creating user "richmond" ...
     ...done.
-    $ rabbitmqctl -n rabbit@localhost add_vhost richmond
+    $ rabbitmqctl -n rabbit@localhost add_vhost /richmond
     Creating vhost "richmond" ...
     ...done.
-    $ rabbitmqctl -n rabbit@localhost set_permissions -p richmond richmond '.*' '.*' '.*'
+    $ rabbitmqctl -n rabbit@localhost set_permissions -p /richmond richmond '.*' '.*' '.*'
     Setting permissions for user "richmond" in vhost "richmond" ...
     ...done.
     
