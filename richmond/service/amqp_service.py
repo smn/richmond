@@ -11,11 +11,16 @@ from twisted.python import log
 from twisted.internet import reactor, defer, protocol
 from twisted.application.service import IServiceMaker, Service
 
+# AMQP Channels are stateful, to make sure we don't get any scary
+# bugs because of two separate instances using the same channel we split them
 CONSUMER_CHANNEL_ID = 1
 PUBLISHER_CHANNEL_ID = 2
 
 class RichmondAMQClient(AMQClient):
-    
+    """
+    Subclassed AMQClient to allow for deferred callbacks on connectionMade and
+    connectionLost events
+    """
     def connectionMade(self, *args, **kwargs):
         AMQClient.connectionMade(self, *args, **kwargs)
         self.factory.onConnectionMade.callback(self)
@@ -24,6 +29,47 @@ class RichmondAMQClient(AMQClient):
         AMQClient.connectionLost(self, *args, **kwargs)
         self.factory.onConnectionLost.callback(self)
     
+
+
+@defer.inlineCallbacks
+def open_channel(client, channel_id):
+    """
+    Open a channel for the given client with the given channel id. The
+    channel_id's should be integers. Not sure why, some txamqp magic.
+    """
+    log.msg("Opening channel with id %s" % channel_id, logLevel=logging.DEBUG)
+    channel = yield client.channel(channel_id)
+    yield channel.channel_open()
+    log.msg("Channel %s opened" % channel_id, logLevel=logging.DEBUG)
+    defer.returnValue(channel)
+
+
+@defer.inlineCallbacks
+def join_queue(client, channel, exchange_name, exchange_type, queue_name, 
+                routing_key, durable=False):
+    log.msg("Joining queue '%s' with routing key '%s'" % 
+                            (queue_name, routing_key), logLevel=logging.DEBUG)
+    yield channel.queue_declare(queue=queue_name, durable=durable)
+    log.msg("Declared queue %s, durable?: %s" % (queue_name, durable), 
+                                                    logLevel=logging.DEBUG)
+    yield channel.exchange_declare(exchange=exchange_name, 
+                                        type=exchange_type,
+                                        durable=durable)
+    log.msg("Connected to exchange '%s' of type '%s'" % 
+                                                (exchange_name, exchange_type),
+                                                logLevel=logging.DEBUG)
+    yield channel.queue_bind(queue=queue_name, exchange=exchange_name, 
+                                routing_key=routing_key)
+    log.msg("Bound '%s' to exchange '%s' with routing key '%s'" % 
+                                (queue_name, exchange_name, routing_key), 
+                                logLevel=logging.DEBUG)
+    
+    reply = yield channel.basic_consume(queue=queue_name)
+    log.msg("Registered the consumer for queue '%s'" % queue_name, 
+                                                logLevel=logging.DEBUG)
+    queue = yield client.queue(reply.consumer_tag)
+    defer.returnValue(queue)
+
 
 class AMQPConsumer(object):
     
@@ -40,33 +86,9 @@ class AMQPConsumer(object):
         """
         self.queue_name = queue_name
         self.routing_key = routing_key
-        log.msg("opening channel")
-        self.channel = yield self.amq_client.channel(CONSUMER_CHANNEL_ID)
-        yield self.channel.channel_open()
-        log.msg("Channel opened", logLevel=logging.DEBUG)
-        
-        log.msg("Joining queue '%s' with routing key '%s'" % 
-                                    (queue_name, routing_key),
-                                    logLevel=logging.DEBUG)
-        yield self.channel.queue_declare(queue=queue_name, durable=False)
-        log.msg("Declared queue %s" % queue_name, logLevel=logging.DEBUG)
-        yield self.channel.exchange_declare(exchange=exchange_name, 
-                                        type=exchange_type,
-                                        durable=False)
-        log.msg("Connected to exchange '%s' of type '%s'" % (
-                                        exchange_name, exchange_type),
-                                        logLevel=logging.DEBUG)
-        yield self.channel.queue_bind(queue=queue_name, 
-                                    exchange=exchange_name, 
-                                    routing_key=routing_key)
-        log.msg("Bound '%s' to exchange '%s' with routing key '%s'" % 
-                                    (queue_name, exchange_name, routing_key), 
-                                    logLevel=logging.DEBUG)
-        
-        reply = yield self.channel.basic_consume(queue=queue_name)
-        log.msg("Registered the consumer for queue '%s'" % queue_name, 
-                                                    logLevel=logging.DEBUG)
-        queue = yield self.amq_client.queue(reply.consumer_tag)
+        self.channel = yield open_channel(self.amq_client, CONSUMER_CHANNEL_ID)
+        queue = yield join_queue(self.amq_client, self.channel, exchange_name,
+                                    exchange_type, queue_name, routing_key)
         log.msg("Got a queue: %s" % queue, logLevel=logging.DEBUG)
         
         def read_messages():
@@ -95,10 +117,7 @@ class AMQPPublisher(object):
         """publish to the exchange with the given routing key"""
         self.exchange = exchange
         self.routing_key = routing_key
-        log.msg("opening channel", logLevel=logging.DEBUG)
-        self.channel = yield self.amq_client.channel(PUBLISHER_CHANNEL_ID)
-        yield self.channel.channel_open()
-        log.msg("Channel opened", logLevel=logging.DEBUG)
+        self.channel = yield open_channel(self.amq_client, PUBLISHER_CHANNEL_ID)
         log.msg("Ready to publish to exchange '%s' with routing key '%s'" % (
             self.exchange, self.routing_key), logLevel=logging.DEBUG)
     
