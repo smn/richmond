@@ -7,6 +7,7 @@ from txamqp.client import TwistedDelegate
 from txamqp.queue import Empty
 
 from twisted.python import usage, log
+from twisted.python.log import logging
 from twisted.internet import error, protocol, reactor, defer
 from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
 from twisted.application.service import IServiceMaker, MultiService, Application
@@ -82,7 +83,7 @@ class PublishingConsumer(amqp_service.AMQPConsumer):
                     "ussd_type": SSMI_USSD_TYPE_END
                 })
             else:
-                log.msg("Ignore message: %s" % self.data)
+                log.msg("Ignore message: %s" % data)
             self.channel.basic_ack(message.delivery_tag, True)
         else:
             log.msg("Received data: '%s' but publisher is missing" % 
@@ -101,6 +102,7 @@ class RichmondWorkerServiceMaker(object):
     
     def makeService(self, options):
         amqp_options = self.get_amqp_options(options)
+        
         amqp_srv = amqp_service.AMQPService(amqp_options['host'],
                                             amqp_options['port'],
                                             amqp_options['username'],
@@ -117,19 +119,15 @@ class RichmondWorkerServiceMaker(object):
                                         amqp_options['receive-queue'],
                                         amqp_options['receive-routing-key'])
             defer.returnValue(amq_client)
-        
+    
         @defer.inlineCallbacks
         def publisher_ready(amq_client):
-            log.msg("publisher ready!")
-            log.msg("publisher: %s" % amqp_srv.publisher)
             yield amqp_srv.publisher.publish_to(
                             exchange=amqp_options['exchange'],
                             routing_key=amqp_options['send-routing-key'])
-            log.msg("specifying for consumer: %s" % amqp_srv.consumer.set_publisher)
             yield amqp_srv.consumer.set_publisher(amqp_srv.publisher)
             defer.returnValue(amq_client)
-        
-        
+    
         amqp_srv.onConnectionMade.addCallback(consumer_ready)
         amqp_srv.onConnectionMade.addCallback(publisher_ready)
         return amqp_srv
