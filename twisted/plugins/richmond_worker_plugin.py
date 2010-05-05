@@ -74,11 +74,21 @@ class RichmondWorker(AMQPConsumer):
         log.msg("RichmondWorker will publish to: %s" % publisher)
         self.publisher = publisher
     
-    def publish(self, message):
-        pass
+    def publish(self, data):
+        self.publisher.send(data)
     
-    def consume(self, message):
-        pass
+    def consume(self, data):
+        if data['ussd_type'] == SSMI_USSD_TYPE_NEW:
+            self.publish({
+                "msisdn": data['msisdn'],
+                "message": "so long and thanks for all the fish",
+                "ussd_type": SSMI_USSD_TYPE_END
+            })
+        else:
+            log.msg("Ignore message: %s" % data)
+    
+    def ack(self, message):
+        self.channel.basic_ack(message.delivery_tag, True)
     
     def start(self):
         if self.publisher:
@@ -87,20 +97,8 @@ class RichmondWorker(AMQPConsumer):
             raise RuntimeException, """This consumer cannot start without having been assigned a publisher first."""
     
     def consume_data(self, message):
-        if self.publisher:
-            data = json.loads(message.content.body)
-            if data['ussd_type'] == SSMI_USSD_TYPE_NEW:
-                self.publisher.send({
-                    "msisdn": data['msisdn'],
-                    "message": "so long and thanks for all the fish",
-                    "ussd_type": SSMI_USSD_TYPE_END
-                })
-            else:
-                log.msg("Ignore message: %s" % data)
-            self.channel.basic_ack(message.delivery_tag, True)
-        else:
-            log.err("Received data: '%s' but publisher is missing" % 
-                                message.content.body, logLevel=logging.DEBUG)
+        self.consume(json.loads(message.content.body))
+        self.ack(message)
             
 
 
