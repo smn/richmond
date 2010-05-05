@@ -8,8 +8,7 @@ from txamqp.queue import Empty
 
 from twisted.python import usage, log
 from twisted.python.log import logging
-from twisted.internet import error, protocol, reactor
-from twisted.internet.defer import inlineCallbacks, Deferred, returnValue
+from twisted.internet import error, protocol, reactor, defer
 from twisted.application.service import IServiceMaker, MultiService, Application
 from twisted.application import internet
 from twisted.plugin import IPlugin
@@ -73,7 +72,7 @@ class USSDCallback(ssmi_service.SSMICallback):
     
     publisher = None
     
-    def publish_to(self, publisher):
+    def set_publisher(self, publisher):
         self.publisher = publisher
     
     def ussd_callback(self, msisdn, ussd_type, ussd_phase, message):
@@ -136,21 +135,24 @@ class RichmondServiceMaker(object):
                                             )
         amqp_srv.setServiceParent(multi_service)
         
+        @defer.inlineCallbacks
         def consumer_ready(ssmi_client):
             amqp_srv.consumer.ssmi_client = ssmi_client
-            amqp_srv.consumer.join_queue(
+            yield amqp_srv.consumer.join_queue(
                                         amqp_options['exchange'],
                                         "direct",
                                         amqp_options['send-queue'],
                                         amqp_options['send-routing-key'])
-            return ssmi_client
+            yield amqp_srv.consumer.start()
+            defer.returnValue(ssmi_client)
         
+        @defer.inlineCallbacks
         def publisher_ready(ssmi_client):
-            amqp_srv.publisher.publish_to(
+            yield amqp_srv.publisher.publish_to(
                             exchange=amqp_options['exchange'],
                             routing_key=amqp_options['receive-routing-key'])
-            ssmi_client.callback.publish_to(amqp_srv.publisher)
-            return ssmi_client
+            yield ssmi_client.callback.set_publisher(amqp_srv.publisher)
+            defer.returnValue(ssmi_client)
         
         ssmi_srv = ssmi_service.SSMIService(ssmi_options['username'], 
                                             ssmi_options['password'],

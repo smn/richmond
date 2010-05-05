@@ -17,6 +17,7 @@ import json
 
 from richmond.service import ssmi_service
 from richmond.service import amqp_service
+from richmond.amqp.base import AMQPConsumer
 from richmond.utils import filter_options_on_prefix
 
 from ssmi.client import SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_NEW
@@ -67,11 +68,23 @@ class Options(usage.Options):
     opt_c = opt_config
 
 
-class PublishingConsumer(amqp_service.AMQPConsumer):
+class RichmondWorker(AMQPConsumer):
     publisher = None
     def set_publisher(self, publisher):
-        log.msg("PublishingConsumer will publish to: %s" % publisher)
+        log.msg("RichmondWorker will publish to: %s" % publisher)
         self.publisher = publisher
+    
+    def publish(self, message):
+        pass
+    
+    def consume(self, message):
+        pass
+    
+    def start(self):
+        if self.publisher:
+            super(RichmondWorker, self).start()
+        else:
+            raise RuntimeException, """This consumer cannot start without having been assigned a publisher first."""
     
     def consume_data(self, message):
         if self.publisher:
@@ -86,7 +99,7 @@ class PublishingConsumer(amqp_service.AMQPConsumer):
                 log.msg("Ignore message: %s" % data)
             self.channel.basic_ack(message.delivery_tag, True)
         else:
-            log.msg("Received data: '%s' but publisher is missing" % 
+            log.err("Received data: '%s' but publisher is missing" % 
                                 message.content.body, logLevel=logging.DEBUG)
             
 
@@ -109,7 +122,7 @@ class RichmondWorkerServiceMaker(object):
                                             amqp_options['password'],
                                             amqp_options['spec'],
                                             amqp_options['vhost'],
-                                            consumer_class=PublishingConsumer
+                                            consumer_class=RichmondWorker
                                             )
         @defer.inlineCallbacks
         def consumer_ready(amq_client):
@@ -126,6 +139,7 @@ class RichmondWorkerServiceMaker(object):
                             exchange=amqp_options['exchange'],
                             routing_key=amqp_options['send-routing-key'])
             yield amqp_srv.consumer.set_publisher(amqp_srv.publisher)
+            yield amqp_srv.consumer.start()
             defer.returnValue(amq_client)
     
         amqp_srv.onConnectionMade.addCallback(consumer_ready)

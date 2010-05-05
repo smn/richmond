@@ -53,9 +53,13 @@ class AMQPConsumer(object):
         self.queue = yield join_queue(self.amq_client, self.channel, exchange_name,
                                     exchange_type, queue_name, routing_key)
         log.msg("Got a queue: %s" % self.queue, logLevel=logging.DEBUG)
-        
+        defer.returnValue(self)
+    
+    @defer.inlineCallbacks
+    def start(self):
         @defer.inlineCallbacks
         def read_messages():
+            log.msg("Consumer starting...")
             try:
                 while not self.shutting_down:
                     log.msg("Waiting for messages")
@@ -63,8 +67,8 @@ class AMQPConsumer(object):
                     self.consume_data(message)
             except queue.Closed, e:
                 log.err("Queue has closed: %s" % e)
-        d = read_messages()
-        d.addErrback(lambda f: f.raiseException())
+        read_messages()
+        yield None
         defer.returnValue(self)
     
     def shutdown(self,reason="Twisted is shutting down"):
