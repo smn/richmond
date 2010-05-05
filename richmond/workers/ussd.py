@@ -1,30 +1,24 @@
 import json
-# from richmond.workers.base import AMQPWorker
-from base import AMQPWorker
+from richmond.workers.base import RichmondWorker
+from twisted.python import log
 from ssmi.client import (SSMI_USSD_TYPE_NEW, SSMI_USSD_TYPE_EXISTING, 
                             SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_TIMEOUT)
 
-class USSDWorker(AMQPWorker):
-    
-    def reply(self, msisdn, text, reply_type):
-        """
-        There should be a different worker doing the sending, we publish
-        to it's queue here.
-        """
-        data = {
-            "msisdn": msisdn,
-            "message": text,
-            "ussd_type": reply_type
-        }
-        raw_data = json.dumps(data)
-        self.logger.debug("SEND: %s" % raw_data)
-        self.publisher.send(raw_data)
+class USSDWorker(RichmondWorker):
     
     def process_sms(self, *args):
         raise NotImplementedError
     
+    def reply(self, msisdn, message, ussd_type):
+        return self.publish({
+            "msisdn": msisdn,
+            "message": message,
+            "ussd_type": ussd_type
+        })
+    
     def new_ussd_session(self, msisdn, message):
-        raise NotImplementedError
+        self.reply(msisdn, "so long and thanks for all the fish",
+                    SSMI_USSD_TYPE_END)
     
     def existing_ussd_session(self, msisdn, message):
         raise NotImplementedError
@@ -35,15 +29,12 @@ class USSDWorker(AMQPWorker):
     def end_ussd_session(self, msisdn, message):
         raise NotImplementedError
     
-    def handle_message(self, raw_data):
-        
-        self.logger.debug("RECEIVED: %s" % raw_data)
-        data = json.loads(raw_data)
-        print 'json data:', data
-        msisdn = data['msisdn']
-        ussd_type = data['ussd_type']
-        ussd_phase = data['ussd_phase']
-        message = data['message']
+    def consume(self, json):
+        log.msg("RECEIVED: %s" % json)
+        msisdn = json['msisdn']
+        ussd_type = json['ussd_type']
+        ussd_phase = json['ussd_phase']
+        message = json['message']
         
         routes = {
             SSMI_USSD_TYPE_NEW: self.new_ussd_session,
@@ -74,14 +65,9 @@ class EchoWorker(USSDWorker):
             self.reply(msisdn, message, SSMI_USSD_TYPE_EXISTING)
     
     def timed_out_ussd_session(self, msisdn, message):
-        self.logger.debug('%s timed out, removing client' % msisdn)
+        log.msg('%s timed out, removing client' % msisdn)
     
     def end_ussd_session(self, msisdn, message):
-        self.logger.debug('%s ended the session, removing client' % msisdn)
+        log.msg('%s ended the session, removing client' % msisdn)
     
 
-
-if __name__ == '__main__':
-    worker = EchoWorker()
-    worker.start()
-    
