@@ -17,8 +17,8 @@ import json
 
 from richmond.service import ssmi_service
 from richmond.service import amqp_service
-from richmond.amqp.base import AMQPConsumer
-from richmond.utils import filter_options_on_prefix
+# from richmond.workers.base import RichmondWorker
+from richmond.utils import filter_options_on_prefix, load_class_by_string
 
 from ssmi.client import SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_NEW
 
@@ -36,6 +36,7 @@ class Options(usage.Options):
         ["amqp-exchange", None, "richmond", "AMQP exchange"],
         ["amqp-receive-queue", None, "richmond.receive", "AMQP receive queue"],
         ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
+        ["amqp-worker-class", "w", "richmond.workers.base.RichmondWorker", "AMQP worker class"]
     ]
     
     def opt_config(self, path):
@@ -68,40 +69,6 @@ class Options(usage.Options):
     opt_c = opt_config
 
 
-class RichmondWorker(AMQPConsumer):
-    publisher = None
-    def set_publisher(self, publisher):
-        log.msg("RichmondWorker will publish to: %s" % publisher)
-        self.publisher = publisher
-    
-    def publish(self, data):
-        self.publisher.send(data)
-    
-    def consume(self, data):
-        if data['ussd_type'] == SSMI_USSD_TYPE_NEW:
-            self.publish({
-                "msisdn": data['msisdn'],
-                "message": "so long and thanks for all the fish",
-                "ussd_type": SSMI_USSD_TYPE_END
-            })
-        else:
-            log.msg("Ignore message: %s" % data)
-    
-    def ack(self, message):
-        self.channel.basic_ack(message.delivery_tag, True)
-    
-    def start(self):
-        if self.publisher:
-            super(RichmondWorker, self).start()
-        else:
-            raise RuntimeException, """This consumer cannot start without having been assigned a publisher first."""
-    
-    def consume_data(self, message):
-        self.consume(json.loads(message.content.body))
-        self.ack(message)
-            
-
-
 class RichmondWorkerServiceMaker(object):
     implements(IServiceMaker, IPlugin)
     tapname = "richmond_worker"
@@ -113,6 +80,7 @@ class RichmondWorkerServiceMaker(object):
     
     def makeService(self, options):
         amqp_options = self.get_amqp_options(options)
+        worker_class = load_class_by_string(amqp_options['worker-class'])
         
         amqp_srv = amqp_service.AMQPService(amqp_options['host'],
                                             amqp_options['port'],
@@ -120,7 +88,7 @@ class RichmondWorkerServiceMaker(object):
                                             amqp_options['password'],
                                             amqp_options['spec'],
                                             amqp_options['vhost'],
-                                            consumer_class=RichmondWorker
+                                            consumer_class=worker_class
                                             )
         @defer.inlineCallbacks
         def consumer_ready(amq_client):

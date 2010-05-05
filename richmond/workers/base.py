@@ -1,55 +1,33 @@
-#!/usr/bin/env python
-from carrot.connection import BrokerConnection
-from carrot.messaging import Consumer, Publisher
-import logging
-import sys
+from twisted.python import log
+from twisted.python.log import logging
+from richmond.amqp.base import AMQPConsumer
+import json
 
-class AMQPWorker(object):
+class RichmondWorker(AMQPConsumer):
+    publisher = None
+    def set_publisher(self, publisher):
+        log.msg("RichmondWorker will publish to: %s" % publisher)
+        self.publisher = publisher
     
-    def __init__(self):
-        self.logger = self.create_logger()
-        self.connection = self.create_amqp_connection()
-        self.consumer = self.create_amqp_consumer(self.connection)
-        self.consumer.register_callback(self.receive_message)
-        self.publisher = self.create_amqp_publisher(self.connection)
+    def publish(self, data):
+        self.publisher.send(data)
+    
+    def consume(self, data):
+        log.msg("Please override consume as I'm not doing anything yet.")
+        log.msg("Ignore message: %s" % data)
+    
+    def ack(self, message):
+        self.channel.basic_ack(message.delivery_tag, True)
     
     def start(self):
-        self.consumer.wait()
+        if self.publisher:
+            super(RichmondWorker, self).start()
+        else:
+            raise RuntimeException, """This consumer cannot start without having been assigned a publisher first."""
     
-    def create_amqp_connection(self):
-        return BrokerConnection(hostname="localhost", 
-                                port=int(5672),
-                                userid='richmond',
-                                password='richmond',
-                                virtual_host='/richmond')
-    
-    def create_amqp_consumer(self, connection):
-        return Consumer(connection=connection, 
-                                queue="richmond.receive", 
-                                exchange="richmond", 
-                                routing_key="ssmi.receive",
-                                durable=False)
-    
-    def create_amqp_publisher(self, connection):
-        return Publisher(connection=connection, 
-                                queue="richmond.send", 
-                                exchange="richmond", 
-                                routing_key="ssmi.send",
-                                durable=False)
-    
-    def create_logger(self):
-        logger = logging.getLogger("amqp-consumer")
-        logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter('[%(name)s] %(asctime)s %(levelname)s %(message)s'))
-        logger.addHandler(handler)
-        return logger
-    
-    def receive_message(self, message_data, message):
-        self.handle_message(message_data)
-        message.ack()
-    
-    def handle_message(self, message):
-        raise NotImplementedError, "must be subclassed"
+    def consume_data(self, message):
+        self.consume(json.loads(message.content.body))
+        self.ack(message)
+            
 
 
