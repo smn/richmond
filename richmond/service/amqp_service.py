@@ -40,14 +40,14 @@ class AMQPService(Service):
     
     @defer.inlineCallbacks
     def start_consumer(self, client):
-        yield None # crazy
-        self.consumer = self.consumer_class(client)
+        self.consumer = self.consumer_class()
+        yield self.consumer.set_amq_client(client)
         defer.returnValue(client)
     
     @defer.inlineCallbacks
     def start_publisher(self, client):
-        yield None # crazy
-        self.publisher = self.publisher_class(client)
+        self.publisher = self.publisher_class()
+        yield self.publisher.set_amq_client(client)
         defer.returnValue(client)
     
     def startService(self):

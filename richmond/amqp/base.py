@@ -36,10 +36,12 @@ class AMQPConsumer(object):
     
     shutting_down = False
     
-    def __init__(self, amq_client):
+    def __init__(self):
         """Start the consumer"""
-        self.amq_client = amq_client
         log.msg("Started consumer")
+    
+    def set_amq_client(self, amq_client):
+        self.amq_client = amq_client
     
     @defer.inlineCallbacks
     def join_queue(self, exchange_name, exchange_type, queue_name, routing_key):
@@ -73,7 +75,6 @@ class AMQPConsumer(object):
     
     def shutdown(self,reason="Twisted is shutting down"):
         self.shutting_down = True
-        self.queue.close()
         self.channel.close(reason)
     
     def consume_data(self, message):
@@ -85,8 +86,11 @@ class AMQPConsumer(object):
 
 class AMQPPublisher(object):
     
-    def __init__(self, amq_client):
+    def __init__(self):
         """Start the publisher"""
+        log.msg("Started publisher")
+    
+    def set_amq_client(self, amq_client):
         self.amq_client = amq_client
     
     @defer.inlineCallbacks
