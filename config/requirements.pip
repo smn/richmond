@@ -3,4 +3,4 @@ zope.interface
 twisted==10.0.0
 txamqp==0.3
 -e git+git@github.com:praekelt/python-ssmi.git#egg=python-ssmi
--e git+git@github.com:smn/alexandria.git#egg=smn-alexandria
+-e git+git://github.com/smn/alexandria.git#egg=smn-alexandria
