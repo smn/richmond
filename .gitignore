@@ -6,3 +6,4 @@ logs/*
 dropin.cache
 *.swp
 *.pid
+_trial_temp/*
