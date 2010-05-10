@@ -67,16 +67,62 @@ Make sure you update the configuration file in `config/richmond-broker.cfg` and 
         richmond_broker -c config/richmond-broker.cfg
     ...
     
-Make sure you update the worker configuration in `config/richmond-worker.cfg` and start a worker.
+Make sure you update the worker configuration in `config/richmond-worker.cfg` if the defaults aren't suitable and start a worker.
 
     $ source ve/bin/activate
     (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.worker.1.pid -n \
         richmond_worker -w richmond.workers.ussd.EchoWorker
     ...
 
+The worker's -w option allows you to specify a class that subclasses `richmond.workers.base.RichmondWorker`.
+
 Remove the `-n` option to have `twistd` run in the background. The `--pidfile` option isn't necessary, `twistd` will use 'twistd.pid' by default. However, since we could have multiple brokers and workers running at the same time on the same machine it is good to be explicit since `twistd` will assume an instance is already running if 'twistd.pid' already exists.
 
+Creating a custom worker
+------------------------
 
+We'll create a worker that responds to USSD json objects. We'll subclass the `richmond.workers.ussd.USSDWorker` which itself subclasses `richmond.workers.base.RichmondWorker`. The `USSDWorker` subclasses `RichmondWorker`'s `consume` method and maps these to the following methods:
+
+    * new_ussd_session(msisdn, message)
+    * existing_ussd_session(msisdn, message)
+    * timed_out_ussd_session(msisdn, message)
+    * end_ussd_session(msisdn, message)
+
+The `USSDWorker` also provides a `reply(msisdn, message, type)` that publishes the message of the given type to the queue.
+
+Here's [working example][foobarworker]:
+    
+    from richmond.workers.ussd import USSDWorker, SessionType
+    from twisted.python import log
+    
+    class FooBarWorker(USSDWorker):
+    
+        def new_ussd_session(self, msisdn, message):
+            """Respond to new sessions"""
+            self.reply(msisdn, "foo?", SessionType.existing)
+        
+        def existing_ussd_session(self, msisdn, message):
+            """Respond to returning sessions"""
+            if message == "bar" or message == "0": # sorry android is silly
+                # replying with type `SessionType.end` ends the session
+                self.reply(msisdn, "Clever. Bye!", SessionType.end)
+            else:
+                # replying with type `SessionType.existing` keeps the session
+                # open and prompts the user for input
+                self.reply(msisdn, "Say bar ...", SessionType.existing)
+        
+        def timed_out_ussd_session(self, msisdn, message):
+            """These timed out unfortunately"""
+            log.msg("%s timed out" % msisdn)
+        
+        def end_ussd_session(self, msisdn, message):
+            """These ended the session themselves"""
+            log.msg("%s ended session" % msisdn)
+    
+
+
+
+    
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
@@ -84,3 +130,4 @@ Remove the `-n` option to have `twistd` run in the background. The `--pidfile` o
 [GitHub]: http://www.github.com/
 [pubsub]: http://en.wikipedia.org/wiki/Publish/subscribe
 [competing consumers]: http://www.eaipatterns.com/CompetingConsumers.html
+[foobarworker]: http://github.com/smn/richmond/blob/master/richmond/workers/example.py
