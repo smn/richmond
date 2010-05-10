@@ -1,5 +1,6 @@
 zope.interface
 twisted==10.0.0
 txamqp==0.3
+Django==1.1.1
 -e git+git@github.com:praekelt/python-ssmi.git#egg=python-ssmi
 -e git+git://github.com/smn/alexandria.git#egg=smn-alexandria

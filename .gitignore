@@ -7,3 +7,4 @@ dropin.cache
 *.swp
 *.pid
 _trial_temp/*
+src/*.egg-info/*
