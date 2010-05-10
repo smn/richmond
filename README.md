@@ -82,4 +82,5 @@ Remove the `-n` option to have `twistd` run in the background. The `--pidfile` o
 [pip]: http://pypi.python.org/pypi/pip
 [pypi]: http://pypi.python.org/pypi/
 [GitHub]: http://www.github.com/
+[pubsub]: http://en.wikipedia.org/wiki/Publish/subscribe
 [competing consumers]: http://www.eaipatterns.com/CompetingConsumers.html
