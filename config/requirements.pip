@@ -1,4 +1,3 @@
-carrot==0.10.3
 zope.interface
 twisted==10.0.0
 txamqp==0.3
