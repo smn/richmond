@@ -12,9 +12,6 @@ class SessionType(object):
 
 class USSDWorker(RichmondWorker):
     
-    def process_sms(self, *args):
-        raise NotImplementedError
-    
     def reply(self, msisdn, message, ussd_type):
         return self.publish({
             "msisdn": msisdn,
