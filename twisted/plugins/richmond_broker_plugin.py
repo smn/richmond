@@ -108,7 +108,7 @@ class SSMIConsumer(amqp_service.AMQPConsumer):
 
 class RichmondServiceMaker(object):
     implements(IServiceMaker, IPlugin)
-    tapname = "richmond"
+    tapname = "richmond_broker"
     description = "Connect to SSMI to AMQP broker"
     options = Options
     
