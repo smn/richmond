@@ -31,11 +31,12 @@ class Options(usage.Options):
         ["amqp-password", None, "richmond", "AMQP password"],
         ["amqp-spec", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
         ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
-        ["amqp-send-queue", None, "richmond.send", "AMQP send queue"],
-        ["amqp-send-routing-key", None, "ssmi.send", "AMQP routing key"],
+        ["amqp-ussd-send-queue", None, "richmond.ussd.send", "AMQP send queue"],
+        ["amqp-ussd-send-routing-key", None, "ussd.send", "AMQP routing key"],
         ["amqp-exchange", None, "richmond", "AMQP exchange"],
-        ["amqp-receive-queue", None, "richmond.receive", "AMQP receive queue"],
-        ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
+        ["amqp-exchange-type", None, "direct", "AMQP exchange type"],
+        ["amqp-ussd-receive-queue", None, "richmond.ussd.receive", "AMQP receive queue"],
+        ["amqp-ussd-receive-routing-key", None, "ussd.receive", "AMQP routing key"],
     ]
     
     def opt_config(self, path):
@@ -140,9 +141,9 @@ class RichmondServiceMaker(object):
             amqp_srv.consumer.ssmi_client = ssmi_client
             yield amqp_srv.consumer.join_queue(
                                         amqp_options['exchange'],
-                                        "direct",
-                                        amqp_options['send-queue'],
-                                        amqp_options['send-routing-key'])
+                                        amqp_options['exchange-type'],
+                                        amqp_options['ussd-send-queue'],
+                                        amqp_options['ussd-send-routing-key'])
             yield amqp_srv.consumer.start()
             defer.returnValue(ssmi_client)
         
@@ -150,7 +151,7 @@ class RichmondServiceMaker(object):
         def publisher_ready(ssmi_client):
             yield amqp_srv.publisher.publish_to(
                             exchange=amqp_options['exchange'],
-                            routing_key=amqp_options['receive-routing-key'])
+                            routing_key=amqp_options['ussd-receive-routing-key'])
             yield ssmi_client.callback.set_publisher(amqp_srv.publisher)
             defer.returnValue(ssmi_client)
         

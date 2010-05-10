@@ -17,7 +17,6 @@ import json
 
 from richmond.service import ssmi_service
 from richmond.service import amqp_service
-# from richmond.workers.base import RichmondWorker
 from richmond.utils import filter_options_on_prefix, load_class_by_string
 
 from ssmi.client import SSMI_USSD_TYPE_END, SSMI_USSD_TYPE_NEW
@@ -31,12 +30,13 @@ class Options(usage.Options):
         ["amqp-password", None, "richmond", "AMQP password"],
         ["amqp-spec", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
         ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
-        ["amqp-send-queue", None, "richmond.send", "AMQP send queue"],
-        ["amqp-send-routing-key", None, "ssmi.send", "AMQP routing key"],
+        ["amqp-ussd-send-queue", None, "richmond.send", "AMQP send queue"],
+        ["amqp-ussd-send-routing-key", None, "ussd.send", "AMQP routing key"],
         ["amqp-exchange", None, "richmond", "AMQP exchange"],
-        ["amqp-receive-queue", None, "richmond.receive", "AMQP receive queue"],
-        ["amqp-receive-routing-key", None, "ssmi.receive", "AMQP routing key"],
-        ["amqp-worker-class", "w", "richmond.workers.base.RichmondWorker", "AMQP worker class"]
+        ["amqp-exchange-type", None, "direct", "AMQP exchange type"],
+        ["amqp-ussd-receive-queue", None, "richmond.ussd.receive", "AMQP receive queue"],
+        ["amqp-ussd-receive-routing-key", None, "ussd.receive", "AMQP routing key"],
+        ["amqp-ussd-worker-class", "w", "richmond.workers.base.RichmondWorker", "AMQP worker class"]
     ]
     
     def opt_config(self, path):
@@ -80,7 +80,7 @@ class RichmondWorkerServiceMaker(object):
     
     def makeService(self, options):
         amqp_options = self.get_amqp_options(options)
-        worker_class = load_class_by_string(amqp_options['worker-class'])
+        worker_class = load_class_by_string(amqp_options['ussd-worker-class'])
         
         amqp_srv = amqp_service.AMQPService(amqp_options['host'],
                                             amqp_options['port'],
@@ -94,16 +94,16 @@ class RichmondWorkerServiceMaker(object):
         def consumer_ready(amq_client):
             yield amqp_srv.consumer.join_queue(
                                         amqp_options['exchange'],
-                                        "direct",
-                                        amqp_options['receive-queue'],
-                                        amqp_options['receive-routing-key'])
+                                        amqp_options['exchange-type'],
+                                        amqp_options['ussd-receive-queue'],
+                                        amqp_options['ussd-receive-routing-key'])
             defer.returnValue(amq_client)
     
         @defer.inlineCallbacks
         def publisher_ready(amq_client):
             yield amqp_srv.publisher.publish_to(
                             exchange=amqp_options['exchange'],
-                            routing_key=amqp_options['send-routing-key'])
+                            routing_key=amqp_options['ussd-send-routing-key'])
             yield amqp_srv.consumer.set_publisher(amqp_srv.publisher)
             yield amqp_srv.consumer.start()
             defer.returnValue(amq_client)
