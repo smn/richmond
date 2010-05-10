@@ -120,9 +120,13 @@ Here's [working example][foobarworker]:
             log.msg("%s ended session" % msisdn)
     
 
+Start the worker:
 
+    $ source ve/bin/activate
+    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.worker.2.pid -n \
+        richmond_worker -w richmond.workers.example.FooBarWorker
+    ...
 
-    
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
