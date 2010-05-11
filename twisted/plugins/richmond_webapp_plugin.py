@@ -46,7 +46,7 @@ class Options(usage.Options):
 
 class RichmondWebappServiceMaker(object):
     """
-    Run Django in a Twisted process: http://code.djangoproject.com/ticket/172
+    Run Django in as a Twisted service
     """
     implements(service.IServiceMaker, plugin.IPlugin)
     tapname = "richmond_webapp"
