@@ -13,12 +13,12 @@ class ApiViewTestCase(TestCase):
     
     def test_creation_of_conversation(self):
         """
-        Conversations should be able to be created via the API
+        Conversations should be able to be created by POSTing to the api
         """
         client = Client()
-        resp = client.post(reverse('conversation'), self.yaml_conversation,
+        resp = client.post(reverse('api:conversation'), self.yaml_conversation,
                             content_type="text/yaml")
         self.assertContains(resp, 'OK')
         
-        resp = client.get(reverse('conversation'))
+        resp = client.get(reverse('api:conversation'))
         self.assertContains(resp, 'Method not allowed', status_code=405)

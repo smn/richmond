@@ -6,7 +6,7 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     # Example:
-    (r'^api/v1/', include('richmond.webapp.api.urls')),
+    (r'^api/v1/', include('richmond.webapp.api.urls', namespace="api")),
 
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
     # to INSTALLED_APPS to enable admin documentation:
