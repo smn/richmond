@@ -1,4 +1,4 @@
-# Django settings for richmond_webapp project.
+# Django settings for webapp project.
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -63,7 +63,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 )
 
-ROOT_URLCONF = 'richmond_webapp.urls'
+ROOT_URLCONF = 'richmond.webapp.urls'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
