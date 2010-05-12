@@ -1,10 +1,35 @@
 from django.test import TestCase
 from django.test.client import Client
 from django.core.urlresolvers import reverse
+from django.contrib.auth.models import User
+import base64
+
+class APIClient(Client):
+    
+    username = None
+    password = None
+    
+    def request(self, **request):
+        if ('HTTP_AUTHORIZATION' not in request) \
+            and (self.username and self.password):
+            b64 = base64.encodestring('%s:%s' % (
+                self.username, 
+                self.password
+            )).strip()
+            request.update({'HTTP_AUTHORIZATION': 'Basic %s' % b64})
+        return super(APIClient, self).request(**request)
+    
+    def login(self, username, password):
+        self.username = username
+        self.password = password
+
 
 class ApiViewTestCase(TestCase):
     
     def setUp(self):
+        # create the user we need to be authorized
+        self.user = User.objects.create_user('api', 'api@domain.com', 'password')
+        # load the yaml data
         fp = open('src/richmond/webapp/api/test_data/devquiz.yaml', 'r')
         self.yaml_conversation = ''.join(fp.readlines())
     
@@ -15,10 +40,11 @@ class ApiViewTestCase(TestCase):
         """
         Conversations should be able to be created by POSTing to the api
         """
-        client = Client()
+        client = APIClient()
+        client.login(username='api', password='password')
         resp = client.post(reverse('api:conversation'), self.yaml_conversation,
-                            content_type="text/yaml")
-        self.assertContains(resp, 'OK')
+                            content_type="application/x-yaml")
+        self.assertContains(resp, 'Created', status_code=201)
         
         resp = client.get(reverse('api:conversation'))
-        self.assertContains(resp, 'Method not allowed', status_code=405)
+        self.assertEquals(resp.status_code, 405)

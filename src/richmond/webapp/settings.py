@@ -81,3 +81,5 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'richmond.webapp.api',
 )
+
+PISTON_DISPLAY_ERRORS = True
