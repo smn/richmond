@@ -26,7 +26,7 @@ class SMSReceiptHandler(BaseHandler):
     @throttle(60, 60) # allow for 1 a second
     @validate(forms.SMSReceiptForm)
     def create(self, request):
-        logging.info('Got notified of an delivered SMS: %s' % request.POST)
+        logging.info('Got notified of a delivered SMS to: %s' % request.POST['to'])
         try:
             pk = int(request.POST['cliMsgId'])
             status = int(request.POST['status'])
@@ -34,7 +34,8 @@ class SMSReceiptHandler(BaseHandler):
             
             sms = SMS.objects.get(id=pk)
             sms.delivery_status = status
-            sms.delivery_at = datetime.utcfromtimestamp()
+            sms.delivery_at = datetime.utcfromtimestamp(timestamp)
+            sms.save()
             return rc.CREATED
         except SMS.DoesNotExist, e:
             return rc.NOT_FOUND
@@ -57,7 +58,8 @@ class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
     
     @throttle(60, 60)
+    @validate(forms.SMSReceiveForm)
     def create(self, request):
-        logging.info('Receiving an SMS')
+        logging.info('Receiving an SMS from: %s' % request.POST['from'])
         return rc.CREATED
     

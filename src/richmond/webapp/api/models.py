@@ -36,7 +36,8 @@ CLICKATELL_ERROR_CODES = (
 )
 
 CLICKATELL_MESSAGE_STATUSES = (
-    (1, 'Message unknown'),
+    (0, 'Pending locally'), # this is our own status
+    (1, 'Message unknown'), # everything above zero is clickatell's status codes
     (2, 'Message queued'),
     (3, 'Delivered to gateway'),
     (4, 'Received by recipient'),
@@ -53,14 +54,13 @@ CLICKATELL_MESSAGE_STATUSES = (
 # Create your models here.
 class SMS(models.Model):
     """An Message to be sent through Richmond"""
-    msg_id = models.CharField(blank=True, max_length=255)
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)
     message = models.CharField(blank=False, max_length=160)
     created_at = models.DateTimeField(blank=True, default=datetime.now)
     updated_at = models.DateTimeField(blank=True, default=datetime.now)
     delivered_at = models.DateTimeField(blank=True, default=datetime.now)
-    delivery_status = models.IntegerField(blank=False, null=True,
+    delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
     
     class Admin:

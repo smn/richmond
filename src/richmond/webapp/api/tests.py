@@ -3,6 +3,7 @@ from django.test.client import Client
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 import base64
+from time import time
 
 from richmond.webapp.api.models import SMS
 
@@ -52,8 +53,18 @@ class ApiViewTestCase(TestCase):
         self.assertEquals(resp.status_code, 405)
     
     def test_sms_receipts(self):
-        resp = self.client.post(reverse('api:sms-receipt'))
-        print resp.content
+        sms = SMS.objects.create(to_msisdn='27123456789',
+                                    from_msisdn='27123456789',
+                                    message='testing api')
+        resp = self.client.post(reverse('api:sms-receipt'), {
+            'apiMsgId': 'a' * 32,
+            'cliMsgId': sms.pk,
+            'status': 8, # OK
+            'to': '27123456789',
+            'from': '27123456789',
+            'timestamp': int(time()),
+            'charge': 0.3
+        })
         self.assertEquals(resp.status_code, 201)
     
     def test_sms_sending(self):
