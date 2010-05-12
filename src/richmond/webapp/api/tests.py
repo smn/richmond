@@ -27,6 +27,8 @@ class APIClient(Client):
 class ApiViewTestCase(TestCase):
     
     def setUp(self):
+        self.client = APIClient()
+        self.client.login(username='api', password='password')
         # create the user we need to be authorized
         self.user = User.objects.create_user('api', 'api@domain.com', 'password')
         # load the yaml data
@@ -40,11 +42,21 @@ class ApiViewTestCase(TestCase):
         """
         Conversations should be able to be created by POSTing to the api
         """
-        client = APIClient()
-        client.login(username='api', password='password')
-        resp = client.post(reverse('api:conversation'), self.yaml_conversation,
+        resp = self.client.post(reverse('api:conversation'), self.yaml_conversation,
                             content_type="application/x-yaml")
         self.assertContains(resp, 'Created', status_code=201)
         
-        resp = client.get(reverse('api:conversation'))
+        resp = self.client.get(reverse('api:conversation'))
         self.assertEquals(resp.status_code, 405)
+    
+    def test_sms_receipts(self):
+        resp = self.client.post(reverse('api:sms-receipt'))
+        self.assertEquals(resp.status_code, 201)
+    
+    def test_sms_sending(self):
+        resp = self.client.post(reverse('api:sms-send'))
+        self.assertEquals(resp.status_code, 201)
+    
+    def test_sms_receiving(self):
+        resp = self.client.post(reverse('api:sms-receive'))
+        self.assertEquals(resp.status_code, 201)
