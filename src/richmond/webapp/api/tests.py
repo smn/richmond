@@ -4,6 +4,8 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 import base64
 
+from richmond.webapp.api.models import SMS
+
 class APIClient(Client):
     
     username = None
@@ -51,11 +53,17 @@ class ApiViewTestCase(TestCase):
     
     def test_sms_receipts(self):
         resp = self.client.post(reverse('api:sms-receipt'))
+        print resp.content
         self.assertEquals(resp.status_code, 201)
     
     def test_sms_sending(self):
-        resp = self.client.post(reverse('api:sms-send'))
-        self.assertEquals(resp.status_code, 201)
+        resp = self.client.post(reverse('api:sms-send'), {
+            'to_msisdn': '27123456789',
+            'from_msisdn': '27123456789',
+            'message': 'yebo',
+        })
+        self.assertEquals(resp.status_code, 200)
+        self.assertTrue(SMS.objects.count())
     
     def test_sms_receiving(self):
         resp = self.client.post(reverse('api:sms-receive'))
