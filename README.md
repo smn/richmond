@@ -128,6 +128,28 @@ Start the worker:
     ...
 
 
+Running the Webapp / API
+------------------------
+
+The webapp is a regular Django application. For development start it within the virtual environment:
+
+    $ source ve/bin/activate
+    (ve)$ ./manage.py syncdb
+    (ve)$ ./manage.py runserver
+    ...
+    
+When running in production start it with the `twistd` plugin `richmond_webapp`
+    
+    $ source ve/bin/activate
+    (ve)$ twistd --pidfile=tmp/pids/richmond.webapp.pid -n richmond_webapp
+
+Run the tests for the webapp API with ./manage.py as well:
+
+    $ source ve/bin/activate
+    (ve)$ ./manage.py test api
+
+
+
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
 [pypi]: http://pypi.python.org/pypi/
