@@ -68,7 +68,10 @@ class SentSMS(models.Model):
         search_fields = ('',)
     
     def __unicode__(self):
-        return u"Message"
+        return u"SentSMS %s -> %s, %s @ %s" % (self.from_msisdn, 
+                                            self.to_msisdn, 
+                                            self.get_delivery_status_display(), 
+                                            self.delivered_at)
 
 class ReceivedSMS(models.Model):
     api_id = models.CharField(max_length=32)
@@ -85,4 +88,11 @@ class ReceivedSMS(models.Model):
         search_fields = ('',)
 
     def __unicode__(self):
-        return u"ReceivedSMS"
+        return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
+                                                self.timestamp)
+
+from django.db.models.signals import post_save
+from richmond.webapp.api import signals
+
+post_save.connect(signals.post_save_sent_sms_handler, sender=SentSMS, weak=False)
+post_save.connect(signals.post_save_received_sms_handler, sender=ReceivedSMS, weak=False)
