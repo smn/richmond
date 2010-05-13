@@ -148,7 +148,26 @@ Run the tests for the webapp API with ./manage.py as well:
     $ source ve/bin/activate
     (ve)$ ./manage.py test api
 
+Scheduling SMS for delivery via the API
+---------------------------------------
 
+The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 60 hits per 60 seconds and require HTTP Basic Authentication.
+
+**Sending SMSs**
+
+    $ curl -u 'username:password' -X POST \
+    >   http://localhost:8000/api/v1/sms/send.html \
+    >   -d 'to_msisdn=27123456789' \
+    >   -d 'from_msisdn=27123456789' \
+    >   -d 'message=hello world'
+    {
+        "delivered_at": "2010-05-13 09:49:57", 
+        "id": 1, 
+        "from_msisdn": "27123456789", 
+        "to_msisdn": "27123456789", 
+        "delivery_status": 0, 
+        "message": "hello world"
+    }
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
