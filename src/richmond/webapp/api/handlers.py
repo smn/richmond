@@ -57,13 +57,19 @@ class SendSMSHandler(BaseHandler):
     exclude = ('created_at', 'updated_at', )
     
     @throttle(60, 60) # allow for 1 a second
-    @validate(forms.SentSMSForm) # should validate as a valid SMS
+    @validate(forms.SentSMSForm) # should validate as a valid SentSMS
     def create(self, request):
-        logging.debug('Sending an SMS to: %s' % request.POST['to_msisdn'])
-        send_sms = super(SendSMSHandler, self).create(request)
-        signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
-        return send_sms
+        def send_one(msisdn):
+            logging.debug('Scheduling an SMS to: %s' % msisdn)
+            data = self.flatten_dict(request.POST)
+            data['to_msisdn'] = msisdn
+            send_sms = self.model(**data)
+            send_sms.save()
+            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
+            return send_sms
+        return map(send_one, request.POST.getlist('to_msisdn'))
     
+
 
 class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)

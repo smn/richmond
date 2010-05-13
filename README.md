@@ -160,14 +160,54 @@ The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 
     >   -d 'to_msisdn=27123456789' \
     >   -d 'from_msisdn=27123456789' \
     >   -d 'message=hello world'
-    {
-        "delivered_at": "2010-05-13 09:49:57", 
-        "id": 1, 
-        "from_msisdn": "27123456789", 
-        "to_msisdn": "27123456789", 
-        "delivery_status": 0, 
-        "message": "hello world"
-    }
+    [
+        {
+            "delivered_at": "2010-05-13 11:34:34", 
+            "id": 5, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456789", 
+            "delivery_status": 0, 
+            "message": "hello world"
+        }
+    ]
+
+**Sending Batched SMSs**
+
+Sending multiple SMSs is as simple as sending a simple SMS. Just specify multiple values for `to_msisdn`.
+
+    $ curl -u 'username:password' -X POST \
+    >   http://localhost:8000/api/v1/sms/send.html \
+    >   -d 'to_msisdn=27123456780' \
+    >   -d 'to_msisdn=27123456781' \
+    >   -d 'to_msisdn=27123456782' \
+    >   -d 'from_msisdn=27123456789' \
+    >   -d 'message=hello world'
+    [
+        {
+            "delivered_at": "2010-05-13 11:32:22", 
+            "id": 2, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456780", 
+            "delivery_status": 0, 
+            "message": "hello world"
+        }, 
+        {
+            "delivered_at": "2010-05-13 11:32:22", 
+            "id": 3, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456781", 
+            "delivery_status": 0, 
+            "message": "hello world"
+        }, 
+        {
+            "delivered_at": "2010-05-13 11:32:22", 
+            "id": 4, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456782", 
+            "delivery_status": 0, 
+            "message": "hello world"
+        }
+    ]
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
