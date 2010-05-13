@@ -1,15 +1,15 @@
 import re
 import logging
-
-logging.basicConfig(level=logging.DEBUG)
+from datetime import datetime
 
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 
 from richmond.webapp.api.models import SentSMS, ReceivedSMS
 from richmond.webapp.api import forms
-from datetime import datetime
 
+from alexandria.loader.base import YAMLLoader
+from alexandria.dsl.utils import dump_menu
 
 class ConversationHandler(BaseHandler):
     allowed_methods = ('POST',)
@@ -17,6 +17,10 @@ class ConversationHandler(BaseHandler):
     @throttle(5, 10*60) # allow 5 times in 10 minutes
     @require_mime('yaml')
     def create(self, request):
+        menu = YAMLLoader().load_from_string(request.raw_post_data)
+        dump = dump_menu(menu)
+        logging.info("Received a new conversation script with %s items "
+                        "but not doing anything with it yet." % len(dump))
         return rc.CREATED
     
 
@@ -57,6 +61,7 @@ class SendSMSHandler(BaseHandler):
 class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
     model = ReceivedSMS
+    
     @throttle(60, 60)
     @validate(forms.ReceivedSMSForm)
     def create(self, request):

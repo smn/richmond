@@ -8,6 +8,9 @@ from datetime import datetime
 
 from richmond.webapp.api.models import *
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 class APIClient(Client):
     
     username = None
