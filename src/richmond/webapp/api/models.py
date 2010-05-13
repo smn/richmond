@@ -1,5 +1,7 @@
 from django.db import models
 from datetime import datetime
+import logging
+from clickatell import Clickatell
 
 CLICKATELL_ERROR_CODES = (
     (001, 'Authentication failed'),
@@ -51,6 +53,22 @@ CLICKATELL_MESSAGE_STATUSES = (
     (12, 'Out of credit'),
 )
 
+
+class ClickatellManager(Clickatell):
+    
+    def deliver(self, pk):
+        return self.sendmsg(SentSMS.objects.get(pk=pk))
+    
+    def sendmsg(self, instance):
+        message = {
+            'to': instance.to_msisdn,
+            'from': instance.from_msisdn,
+            'text': instance.message,
+            'msg_type': 'SMS_TEXT',
+            'climsgid': instance.pk
+        }
+        logging.debug("Clickatell delivery: %s" % message)
+    
 # Create your models here.
 class SentSMS(models.Model):
     """An Message to be sent through Richmond"""
@@ -62,6 +80,8 @@ class SentSMS(models.Model):
     delivered_at = models.DateTimeField(blank=True, default=datetime.now)
     delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
+    
+    clickatell = ClickatellManager('username', 'password', 'api_id')
     
     class Admin:
         list_display = ('',)
@@ -93,6 +113,8 @@ class ReceivedSMS(models.Model):
 
 from django.db.models.signals import post_save
 from richmond.webapp.api import signals
+from richmond.webapp.api.signals import sms_scheduled, sms_received, sms_receipt
 
-post_save.connect(signals.post_save_sent_sms_handler, sender=SentSMS, weak=False)
-post_save.connect(signals.post_save_received_sms_handler, sender=ReceivedSMS, weak=False)
+sms_scheduled.connect(signals.sms_scheduled_handler, sender=SentSMS, weak=False)
+sms_received.connect(signals.sms_received_handler, sender=ReceivedSMS, weak=False)
+sms_receipt.connect(signals.sms_receipt_handler, sender=SentSMS, weak=False)
