@@ -2,6 +2,7 @@ from django.conf.urls.defaults import *
 from piston.resource import Resource
 from piston.authentication import HttpBasicAuthentication
 from richmond.webapp.api import handlers
+from richmond.webapp.api import views
 
 ad = {'authentication': HttpBasicAuthentication(realm="Richmond")}
 conversation_resource = Resource(handler=handlers.ConversationHandler, **ad)
@@ -16,4 +17,5 @@ urlpatterns = patterns('',
     (r'^sms/receipt$', sms_receipt_resource, {}, 'sms-receipt'),
     (r'^sms/send$', sms_send_resource, {}, 'sms-send'),
     (r'^sms/receive$', sms_receive_resource, {}, 'sms-receive'),
+    (r'^callback$', views.example_sms_callback, {}, 'sms-example-callback'),
 )

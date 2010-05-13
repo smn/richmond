@@ -42,7 +42,8 @@ class SMSReceiptHandler(BaseHandler):
             sms.delivery_at = datetime.utcfromtimestamp(timestamp)
             sms.save()
             
-            signals.sms_receipt.send(sender=SentSMS, instance=sms, receipt=request.POST.copy())
+            signals.sms_receipt.send(sender=SentSMS, instance=sms, 
+                                        receipt=request.POST.copy())
             
             return rc.CREATED
         except SentSMS.DoesNotExist, e:

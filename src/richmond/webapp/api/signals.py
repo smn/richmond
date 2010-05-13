@@ -1,10 +1,20 @@
 import logging
+import pycurl
+try:
+    # cStringIO is faster
+    from cStringIO import StringIO
+except ImportError:
+    # otherwise this'll do
+    from StringIO import StringIO
+
 from decorator import decorator
 from richmond.webapp.api.models import SentSMS, ReceivedSMS
 
 from django.dispatch import Signal
-from collections import namedtuple
+from django.core import serializers
+from django.conf import settings
 
+# custom signals for the api
 sms_scheduled = Signal(providing_args=["instance"])
 sms_sent = Signal(providing_args=["instance"])
 sms_received = Signal(providing_args=["instance"])
@@ -12,6 +22,9 @@ sms_receipt = Signal(providing_args=["instance","receipt"])
 
 @decorator
 def asynchronous_signal(f, *args, **kwargs):
+    """
+    Make the signal asynchronous, allow for background processing via a queue
+    """
     logging.debug("I should be calling '%s' asynchronously" % f.__name__)
     # i'll handle the serialization at worker level I think
     return f(*args, **kwargs)
@@ -29,7 +42,40 @@ def sms_received_handler(*args, **kwargs):
 
 @asynchronous_signal
 def sms_received_worker(received_sms):
-    logging.debug("I should take care of doing callbacks for %s" % received_sms)
+    """FIXME: This needs to be smaller"""
+    if not hasattr(settings, 'RICHMOND_API_CALLBACKS'):
+        # no point in continuing
+        return
+    
+    
+    post = received_sms.as_list_of_tuples()
+    def callback(url):
+        data = StringIO()
+        ch = pycurl.Curl()
+        ch.setopt(pycurl.URL, url)
+        ch.setopt(pycurl.VERBOSE, 0)
+        ch.setopt(pycurl.SSLVERSION, 3)
+        ch.setopt(pycurl.SSL_VERIFYPEER, 1)
+        ch.setopt(pycurl.SSL_VERIFYHOST, 2)
+        ch.setopt(pycurl.HTTPHEADER, [
+                "User-Agent: Richmond Callback Client"
+                "Accept:"
+            ])
+        ch.setopt(pycurl.WRITEFUNCTION, data.write)
+        ch.setopt(pycurl.HTTPPOST, post)
+        ch.setopt(pycurl.FOLLOWLOCATION, 1)
+        
+        try:
+            result = ch.perform()
+            resp = data.getvalue()
+            logging.debug("Posted %s to %s which returned %s" % (post, url, resp))
+            return (url, resp)
+        except pycurl.error, v:
+            logging.error("Posting %s to %s resulted in error: %s" % (post, url, v))
+            return (url, v)
+        
+    
+    return map(callback, settings.RICHMOND_API_CALLBACKS['sms_received'])
 
 
 def sms_receipt_handler(*args, **kwargs):

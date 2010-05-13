@@ -2,6 +2,7 @@ from django.db import models
 from datetime import datetime
 import logging
 from clickatell import Clickatell
+from utils import model_instance_to_key_values
 
 CLICKATELL_ERROR_CODES = (
     (001, 'Authentication failed'),
@@ -106,7 +107,12 @@ class ReceivedSMS(models.Model):
     class Admin:
         list_display = ('',)
         search_fields = ('',)
-
+    
+    def as_list_of_tuples(self):
+        tuple_list = model_instance_to_key_values(self, exclude='_from')
+        tuple_list.append(('from', str(self._from)))
+        return tuple_list
+    
     def __unicode__(self):
         return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
                                                 self.timestamp)
