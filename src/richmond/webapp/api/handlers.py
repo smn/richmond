@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 
-from richmond.webapp.api.models import SMS
+from richmond.webapp.api.models import SentSMS, ReceivedSMS
 from richmond.webapp.api import forms
 from datetime import datetime
 
@@ -32,23 +32,23 @@ class SMSReceiptHandler(BaseHandler):
             status = int(request.POST['status'])
             timestamp = float(request.POST['timestamp'])
             
-            sms = SMS.objects.get(id=pk)
+            sms = SentSMS.objects.get(id=pk)
             sms.delivery_status = status
             sms.delivery_at = datetime.utcfromtimestamp(timestamp)
             sms.save()
             return rc.CREATED
-        except SMS.DoesNotExist, e:
+        except SentSMS.DoesNotExist, e:
             return rc.NOT_FOUND
     
 
 
 class SendSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
-    model = SMS
+    model = SentSMS
     exclude = ('created_at', 'updated_at', )
     
     @throttle(60, 60) # allow for 1 a second
-    @validate(forms.SMSForm) # should validate as a valid SMS
+    @validate(forms.SentSMSForm) # should validate as a valid SMS
     def create(self, request):
         logging.info('Sending an SMS to: %s' % request.POST['to_msisdn'])
         return super(SendSMSHandler, self).create(request)
@@ -56,10 +56,16 @@ class SendSMSHandler(BaseHandler):
 
 class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
-    
+    model = ReceivedSMS
     @throttle(60, 60)
-    @validate(forms.SMSReceiveForm)
+    @validate(forms.ReceivedSMSForm)
     def create(self, request):
-        logging.info('Receiving an SMS from: %s' % request.POST['from'])
-        return rc.CREATED
+        # update the POST to have the `_from` key copied from `from`. 
+        # The model has `_from` defined because `from` is a protected python
+        # statement
+        request.POST['_from'] = request.POST['from']
+        del request.POST['from']    # remove because otherwise Django will complain
+                                    # about the field not being defined in the model
+        logging.info('Receiving an SMS from: %s' % request.POST['_from'])
+        return super(ReceiveSMSHandler, self).create(request)
     

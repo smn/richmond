@@ -4,8 +4,9 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 import base64
 from time import time
+from datetime import datetime
 
-from richmond.webapp.api.models import SMS
+from richmond.webapp.api.models import *
 
 class APIClient(Client):
     
@@ -53,7 +54,7 @@ class ApiViewTestCase(TestCase):
         self.assertEquals(resp.status_code, 405)
     
     def test_sms_receipts(self):
-        sms = SMS.objects.create(to_msisdn='27123456789',
+        sms = SentSMS.objects.create(to_msisdn='27123456789',
                                     from_msisdn='27123456789',
                                     message='testing api')
         resp = self.client.post(reverse('api:sms-receipt'), {
@@ -74,8 +75,16 @@ class ApiViewTestCase(TestCase):
             'message': 'yebo',
         })
         self.assertEquals(resp.status_code, 200)
-        self.assertTrue(SMS.objects.count())
+        self.assertEquals(SentSMS.objects.count(), 1)
     
     def test_sms_receiving(self):
-        resp = self.client.post(reverse('api:sms-receive'))
-        self.assertEquals(resp.status_code, 201)
+        resp = self.client.post(reverse('api:sms-receive'), {
+            'to': '27123456789',
+            'from': '27123456789',
+            'moMsgId': 'a' * 12,
+            'api_id': 'b' * 12,
+            'text': 'hello world',
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S") # MySQL format
+        })
+        self.assertEquals(resp.status_code, 200)
+        self.assertEquals(ReceivedSMS.objects.count(), 1)

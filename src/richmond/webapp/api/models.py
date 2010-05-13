@@ -52,7 +52,7 @@ CLICKATELL_MESSAGE_STATUSES = (
 )
 
 # Create your models here.
-class SMS(models.Model):
+class SentSMS(models.Model):
     """An Message to be sent through Richmond"""
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)
@@ -69,3 +69,20 @@ class SMS(models.Model):
     
     def __unicode__(self):
         return u"Message"
+
+class ReceivedSMS(models.Model):
+    api_id = models.CharField(max_length=32)
+    moMsgId = models.CharField(max_length=32)
+    _from = models.CharField(max_length=32)
+    to = models.CharField(max_length=32)
+    timestamp = models.DateTimeField()
+    charset = models.CharField(blank=True, null=True, max_length=32)
+    udh = models.CharField(blank=True, null=True, max_length=255)
+    text = models.CharField(max_length=160)
+    
+    class Admin:
+        list_display = ('',)
+        search_fields = ('',)
+
+    def __unicode__(self):
+        return u"ReceivedSMS"
