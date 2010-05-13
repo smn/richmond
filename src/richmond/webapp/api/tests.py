@@ -27,6 +27,8 @@ class APIClient(Client):
         return super(APIClient, self).request(**request)
     
     def login(self, username, password):
+        """Overridge the cookie based login of Client, 
+        we're using HTTP Basic Auth instead."""
         self.username = username
         self.password = password
 
@@ -57,9 +59,13 @@ class ApiViewTestCase(TestCase):
         self.assertEquals(resp.status_code, 405)
     
     def test_sms_receipts(self):
+        """
+        Receipts received from clickatell should update the status
+        """
         sms = SentSMS.objects.create(to_msisdn='27123456789',
                                     from_msisdn='27123456789',
                                     message='testing api')
+        self.assertEquals(sms.delivery_status, 0)
         resp = self.client.post(reverse('api:sms-receipt'), {
             'apiMsgId': 'a' * 32,
             'cliMsgId': sms.pk,
@@ -69,9 +75,12 @@ class ApiViewTestCase(TestCase):
             'timestamp': int(time()),
             'charge': 0.3
         })
+        sms = SentSMS.objects.get(pk=sms.pk) # reload
+        self.assertEquals(sms.delivery_status, 8)
         self.assertEquals(resp.status_code, 201)
     
     def test_sms_sending(self):
+        self.assertEquals(SentSMS.objects.count(), 0)
         resp = self.client.post(reverse('api:sms-send'), {
             'to_msisdn': '27123456789',
             'from_msisdn': '27123456789',
@@ -81,6 +90,7 @@ class ApiViewTestCase(TestCase):
         self.assertEquals(SentSMS.objects.count(), 1)
     
     def test_sms_receiving(self):
+        self.assertEquals(ReceivedSMS.objects.count(), 0)
         resp = self.client.post(reverse('api:sms-receive'), {
             'to': '27123456789',
             'from': '27123456789',
