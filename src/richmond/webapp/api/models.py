@@ -4,6 +4,7 @@ from datetime import datetime
 import logging
 from clickatell import Clickatell
 from utils import model_instance_to_key_values
+from django.core import serializers
 
 CLICKATELL_ERROR_CODES = (
     (001, 'Authentication failed'),
@@ -92,6 +93,7 @@ class SentSMS(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        get_latest_by = 'created_at'
     
     def __unicode__(self):
         return u"SentSMS %s -> %s, %s @ %s" % (self.from_msisdn, 
@@ -114,6 +116,10 @@ class ReceivedSMS(models.Model):
     class Admin:
         list_display = ('',)
         search_fields = ('',)
+    
+    class Meta:
+        ordering = ['-created_at']
+        get_latest_by = ['created_at']
     
     def as_list_of_tuples(self):
         tuple_list = model_instance_to_key_values(self, exclude='_from')

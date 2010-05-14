@@ -82,7 +82,7 @@ class SentSMSStatusHandler(BaseHandler):
     @throttle(60, 60)
     def read(self, request, sms_id=None):
         if sms_id:
-            return request.user.sentsms_set.filter(pk=sms_id)
+            return request.user.sentsms_set.get(pk=sms_id)
         else:
             if 'since' in request.GET:
                 since = request.GET.get('since')

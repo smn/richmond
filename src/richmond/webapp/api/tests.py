@@ -187,13 +187,13 @@ class SentSMSStatusTestCase(TestCase):
             "sms_id": sent_sms.pk
         }))
         from django.utils import simplejson
-        json_sms = simplejson.loads(resp.content)[0]
+        json_sms = simplejson.loads(resp.content)
         self.assertEquals(json_sms['to_msisdn'], sent_sms.to_msisdn)
         self.assertEquals(json_sms['from_msisdn'], sent_sms.from_msisdn)
         self.assertEquals(json_sms['message'], sent_sms.message)
         self.assertEquals(json_sms['delivery_status'], sent_sms.delivery_status)
         self.assertEquals(resp.status_code, 200)
-        
+    
     
 class URLCallbackTestCase(TestCase):
     
