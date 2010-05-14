@@ -326,7 +326,34 @@ Once an SMS has been scheduled for sending you can check it's status via the API
         }
     ]
     
-    
+Specifying Callbacks
+--------------------
+
+There are two types of callbacks defined.
+
+1. sms_received
+2. sms_receipt
+
+    $ curl -u 'username:password' -X PUT \
+    > http://localhost:8000/api/v1/account/callbacks.json \
+    > -d 'sms_received=http://localhost/sms/received/callback' \
+    > -d 'sms_receipt=http://localhost/sms/receipt/callback'
+    [
+        {
+            "url": "http://localhost/sms/received/callback", 
+            "created_at": "2010-05-14 16:50:13", 
+            "name": "sms_received", 
+            "updated_at": "2010-05-14 16:50:13"
+        }, 
+        {
+            "url": "http://localhost/sms/receipt/callback", 
+            "created_at": "2010-05-14 16:50:13", 
+            "name": "sms_receipt", 
+            "updated_at": "2010-05-14 16:50:13"
+        }
+    ]
+
+The next time an SMS is received or a SMS receipt is delivered, Richmond will post the data to the URLs specified.
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
