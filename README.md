@@ -255,6 +255,78 @@ All template variables should be prefixed with 'template_'. In the template you 
         }
     ]
 
+Checking the status of sent SMSs
+--------------------------------
+
+Once an SMS has been scheduled for sending you can check it's status via the API. There are 3 options of retrieving previously sent SMSs.
+
+**Retrieving one specific SMS**
+
+    $ curl -u 'username:password' -X GET \
+    > http://localhost:8000/api/v1/sms/status/1.json \
+    {
+        "delivered_at": null, 
+        "created_at": "2010-05-14 16:31:01", 
+        "updated_at": "2010-05-14 16:31:01", 
+        "delivery_status_display": "Pending locally", 
+        "from_msisdn": "27123456789", 
+        "id": 1, 
+        "to_msisdn": "27123456789", 
+        "message": "testing api", 
+        "delivery_status": 0
+    }
+
+**Retrieving SMSs sent since a specific date**
+
+    $ curl -u 'username:password' -X GET \
+    > http://localhost:8000/api/v1/sms/status.json?since=2009-01-01
+    [
+        {
+            "delivered_at": null, 
+            "created_at": "2010-05-14 16:31:01", 
+            "updated_at": "2010-05-14 16:31:01", 
+            "delivery_status_display": "Pending locally", 
+            "from_msisdn": "27123456789", 
+            "id": 51, 
+            "to_msisdn": "27123456789", 
+            "message": "testing api", 
+            "delivery_status": 0
+        }, 
+        ...
+        ...
+        ...
+    ]
+
+**Retrieving SMSs by specifying their IDs**
+
+    $ curl -u 'username:password' -X GET \
+    > "http://localhost:8000/api/v1/sms/status.json?id=3&id=4"
+    [
+        {
+            "delivered_at": null, 
+            "created_at": "2010-05-14 16:31:01", 
+            "updated_at": "2010-05-14 16:31:01", 
+            "delivery_status_display": "Pending locally", 
+            "from_msisdn": "27123456789", 
+            "id": 4, 
+            "to_msisdn": "27123456789", 
+            "message": "testing api", 
+            "delivery_status": 0
+        }, 
+        {
+            "delivered_at": null, 
+            "created_at": "2010-05-14 16:31:01", 
+            "updated_at": "2010-05-14 16:31:01", 
+            "delivery_status_display": "Pending locally", 
+            "from_msisdn": "27123456789", 
+            "id": 3, 
+            "to_msisdn": "27123456789", 
+            "message": "testing api", 
+            "delivery_status": 0
+        }
+    ]
+    
+    
 
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip

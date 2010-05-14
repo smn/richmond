@@ -1,6 +1,6 @@
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
@@ -95,21 +95,23 @@ class SendSMSHandler(BaseHandler):
     def read(self, request, sms_id=None):
         if sms_id:
             return self._read_one(request, sms_id)
-        elif 'since' in request.GET:
-            since = request.GET['since']
-            return self._read_from_point_in_time(request, since)
+        elif 'id' in request.GET:
+            return self._read_filtered(request, request.GET.getlist('id'))
         else:
-            limit = int(request.GET.get('limit', 50))
-            return self._read_index(request, limit)
+            since = request.GET.get('since', datetime.now() - timedelta(days=30))
+            start = request.GET.get('start', 0)
+            return self._read_from_point_in_time(request, start, since)
         
     def _read_one(self, request, sms_id):
         return request.user.sentsms_set.get(pk=sms_id)
     
-    def _read_from_point_in_time(self, request, since):
-        return request.user.sentsms_set.filter(updated_at__gte=since)
+    def _read_filtered(self, request, ids):
+        return request.user.sentsms_set.filter(pk__in=map(int, ids))
     
-    def _read_index(self, request, limit):
-        return request.user.sentsms_set.all()[:limit]
+    def _read_from_point_in_time(self, request, start, since):
+        qs = request.user.sentsms_set.filter(updated_at__gte=since)
+        return qs[start:start+100]
+    
 
 class SendTemplateSMSHandler(BaseHandler):
     """

@@ -146,16 +146,6 @@ class SentSMSStatusTestCase(TestCase):
     def tearDown(self):
         pass
     
-    def test_sms_status_list(self):
-        mock_sent_messages(self.user, count=60)
-        resp = self.client.get(reverse('api:sms-status-list'), {
-            'limit': 40
-        })
-        from django.utils import simplejson
-        data = simplejson.loads(resp.content)
-        self.assertEquals(len(data), 40) # respects the limit
-        self.assertEquals(resp.status_code, 200)
-    
     def test_sms_status_list_since(self):
         """
         Sorry this test needs some explanation. In the SentSMS model I'm using
@@ -192,6 +182,20 @@ class SentSMSStatusTestCase(TestCase):
         self.assertEquals(json_sms['from_msisdn'], sent_sms.from_msisdn)
         self.assertEquals(json_sms['message'], sent_sms.message)
         self.assertEquals(json_sms['delivery_status'], sent_sms.delivery_status)
+        self.assertEquals(resp.status_code, 200)
+    
+    def test_multiple_statuses(self):
+        smss = mock_sent_messages(self.user, count=10)
+        sms_ids = map(lambda sms: int(sms.pk), smss)
+        sms_ids.sort()
+        resp = self.client.get(reverse('api:sms-status-list'), {
+            'id': sms_ids
+        })
+        from django.utils import simplejson
+        json_smss = simplejson.loads(resp.content)
+        json_sms_ids = map(lambda sms: int(sms['id']), json_smss)
+        json_sms_ids.sort()
+        self.assertEquals(sms_ids, json_sms_ids)
         self.assertEquals(resp.status_code, 200)
     
     
