@@ -14,6 +14,16 @@ from alexandria.dsl.utils import dump_menu
 
 import pystache
 
+def sent_sms_fields(model, include=[], exclude=[]):
+    """
+    Silly helper to allow me to specify includes & excludes using the model's
+    fields as a base set instead of an empty set.
+    """
+    include.extend([field.name for field in model._meta.fields
+                if field.name not in exclude])
+    return exclude, include
+
+
 class ConversationHandler(BaseHandler):
     allowed_methods = ('POST',)
     
@@ -55,9 +65,12 @@ class SMSReceiptHandler(BaseHandler):
 
 
 class SendSMSHandler(BaseHandler):
-    allowed_methods = ('POST',)
+    allowed_methods = ('GET', 'POST',)
     model = SentSMS
-    exclude = ('user',)
+    
+    exclude, fields = sent_sms_fields(SentSMS, 
+        include=['delivery_status_display'],
+        exclude=['user'])
     
     @throttle(60, 60) # allow for 1 a second
     @validate(forms.SentSMSForm) # should validate as a valid SentSMS
@@ -73,32 +86,39 @@ class SendSMSHandler(BaseHandler):
             return send_sms
         return [send_one(msisdn) for msisdn in 
                     request.POST.getlist('to_msisdn')]
-
-class SentSMSStatusHandler(BaseHandler):
-    allowed_methods = ('GET',)
-    model = SentSMS
-    exclude = ('user',)
+    
+    @classmethod
+    def delivery_status_display(self, instance):
+        return instance.get_delivery_status_display()
     
     @throttle(60, 60)
     def read(self, request, sms_id=None):
         if sms_id:
-            return request.user.sentsms_set.get(pk=sms_id)
+            return self._read_one(request, sms_id)
+        elif 'since' in request.GET:
+            since = request.GET['since']
+            return self._read_from_point_in_time(request, since)
         else:
-            if 'since' in request.GET:
-                since = request.GET.get('since')
-                return request.user.sentsms_set.filter(updated_at__gte=since)
-            else:
-                limit = int(request.GET.get('limit', 50))
-                return request.user.sentsms_set.all()[:limit]
-
+            limit = int(request.GET.get('limit', 50))
+            return self._read_index(request, limit)
+        
+    def _read_one(self, request, sms_id):
+        return request.user.sentsms_set.get(pk=sms_id)
+    
+    def _read_from_point_in_time(self, request, since):
+        return request.user.sentsms_set.filter(updated_at__gte=since)
+    
+    def _read_index(self, request, limit):
+        return request.user.sentsms_set.all()[:limit]
 
 class SendTemplateSMSHandler(BaseHandler):
     """
     FIXME: My eyes bleed
     """
     allowed_methods = ('POST',)
-    # model = SentTemplateSMS
-    exclude = ('created_at', 'updated_at', )
+    exclude, fields = sent_sms_fields(SentSMS, 
+        include=['delivery_status_display'],
+        exclude=['user'])
     
     @throttle(60, 60)
     # @validate(forms.SentTemplateSMSForm)

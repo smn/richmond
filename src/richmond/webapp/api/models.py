@@ -112,6 +112,8 @@ class ReceivedSMS(models.Model):
     charset = models.CharField(blank=True, null=True, max_length=32)
     udh = models.CharField(blank=True, null=True, max_length=255)
     text = models.CharField(max_length=160)
+    created_at = models.DateTimeField(blank=True, auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, auto_now=True)
     
     class Admin:
         list_display = ('',)

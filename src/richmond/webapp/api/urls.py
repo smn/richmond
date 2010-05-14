@@ -12,7 +12,6 @@ conversation_resource = Resource(handler=handlers.ConversationHandler, **ad)
 
 sms_receipt_resource = Resource(handler=handlers.SMSReceiptHandler, **ad)
 sms_send_resource = Resource(handler=handlers.SendSMSHandler, **ad)
-sms_status_resource = Resource(handler=handlers.SentSMSStatusHandler, **ad)
 sms_template_send_resource = Resource(handler=handlers.SendTemplateSMSHandler, **ad)
 sms_receive_resource = Resource(handler=handlers.ReceiveSMSHandler, **ad)
 
@@ -23,8 +22,8 @@ urlpatterns = patterns('',
     (r'^account/callbacks.json$', url_callback_resource, {}, 'url-callbacks'),
     (r'^sms/receipt\.json$', sms_receipt_resource, {}, 'sms-receipt'),
     (r'^sms/send\.json$', sms_send_resource, {}, 'sms-send'),
-    (r'^sms/status\.json$', sms_status_resource, {}, 'sms-status-list'),
-    (r'^sms/status/(?P<sms_id>\d+)\.json$', sms_status_resource, {}, 'sms-status'),
+    (r'^sms/status\.json$', sms_send_resource, {}, 'sms-status-list'),
+    (r'^sms/status/(?P<sms_id>\d+)\.json$', sms_send_resource, {}, 'sms-status'),
     (r'^sms/template_send\.json$', sms_template_send_resource, {}, 'sms-template-send'),
     (r'^sms/receive\.json$', sms_receive_resource, {}, 'sms-receive'),
     (r'^callback\.html$', views.example_sms_callback, {}, 'sms-example-callback'),
