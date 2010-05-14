@@ -146,17 +146,17 @@ class SentSMSStatusTestCase(TestCase):
     def tearDown(self):
         pass
     
-    def test_sms_status(self):
+    def test_sms_status_list(self):
         mock_sent_messages(self.user, count=60)
-        resp = self.client.get(reverse('api:sms-status'), {
-            'limit': 50
+        resp = self.client.get(reverse('api:sms-status-list'), {
+            'limit': 40
         })
         from django.utils import simplejson
         data = simplejson.loads(resp.content)
-        self.assertEquals(len(data), 50) # respects the limit
+        self.assertEquals(len(data), 40) # respects the limit
         self.assertEquals(resp.status_code, 200)
     
-    def test_sms_status_since(self):
+    def test_sms_status_list_since(self):
         """
         Sorry this test needs some explanation. In the SentSMS model I'm using
         Django's `auto_now` and `auto_now_add` options to automatically 
@@ -168,7 +168,7 @@ class SentSMSStatusTestCase(TestCase):
         """
         january_2009 = datetime(2009,01,01,0,0,0)
         new_smss = mock_sent_messages(self.user, count=50)
-        resp = self.client.get(reverse('api:sms-status'), {
+        resp = self.client.get(reverse('api:sms-status-list'), {
             'since': january_2009
         })
         from django.utils import simplejson
@@ -179,6 +179,19 @@ class SentSMSStatusTestCase(TestCase):
                                         # entries it should also return the 
                                         # 51st entry which is one from 2009
                                         # in the fixtures file.
+        self.assertEquals(resp.status_code, 200)
+    
+    def test_single_status(self):
+        sent_sms = SentSMS.objects.latest('created_at')
+        resp = self.client.get(reverse('api:sms-status', kwargs={
+            "sms_id": sent_sms.pk
+        }))
+        from django.utils import simplejson
+        json_sms = simplejson.loads(resp.content)[0]
+        self.assertEquals(json_sms['to_msisdn'], sent_sms.to_msisdn)
+        self.assertEquals(json_sms['from_msisdn'], sent_sms.from_msisdn)
+        self.assertEquals(json_sms['message'], sent_sms.message)
+        self.assertEquals(json_sms['delivery_status'], sent_sms.delivery_status)
         self.assertEquals(resp.status_code, 200)
         
     
