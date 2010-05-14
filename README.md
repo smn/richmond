@@ -329,10 +329,7 @@ Once an SMS has been scheduled for sending you can check it's status via the API
 Specifying Callbacks
 --------------------
 
-There are two types of callbacks defined.
-
-1. sms_received
-2. sms_receipt
+There are two types of callbacks defined. These are `sms_received` and `sms_receipt`. Each trigger an HTTP POST to the given URLs.
 
     $ curl -u 'username:password' -X PUT \
     > http://localhost:8000/api/v1/account/callbacks.json \
