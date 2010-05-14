@@ -15,9 +15,9 @@ urlpatterns = patterns('',
     (r'^conversation\.yaml$', conversation_resource, {
         'emitter_format': 'yaml'
     }, 'conversation'),
-    (r'^sms/receipt\.html$', sms_receipt_resource, {}, 'sms-receipt'),
-    (r'^sms/send\.html$', sms_send_resource, {}, 'sms-send'),
-    (r'^sms/template_send\.html$', sms_template_send_resource, {}, 'sms-template-send'),
-    (r'^sms/receive\.html$', sms_receive_resource, {}, 'sms-receive'),
+    (r'^sms/receipt\.json$', sms_receipt_resource, {}, 'sms-receipt'),
+    (r'^sms/send\.json$', sms_send_resource, {}, 'sms-send'),
+    (r'^sms/template_send\.json$', sms_template_send_resource, {}, 'sms-template-send'),
+    (r'^sms/receive\.json$', sms_receive_resource, {}, 'sms-receive'),
     (r'^callback\.html$', views.example_sms_callback, {}, 'sms-example-callback'),
 )

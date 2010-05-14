@@ -156,7 +156,7 @@ The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 
 **Sending SMSs**
 
     $ curl -u 'username:password' -X POST \
-    >   http://localhost:8000/api/v1/sms/send.html \
+    >   http://localhost:8000/api/v1/sms/send.json \
     >   -d 'to_msisdn=27123456789' \
     >   -d 'from_msisdn=27123456789' \
     >   -d 'message=hello world'
@@ -176,7 +176,7 @@ The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 
 Sending multiple SMSs is as simple as sending a simple SMS. Just specify multiple values for `to_msisdn`.
 
     $ curl -u 'username:password' -X POST \
-    >   http://localhost:8000/api/v1/sms/send.html \
+    >   http://localhost:8000/api/v1/sms/send.json \
     >   -d 'to_msisdn=27123456780' \
     >   -d 'to_msisdn=27123456781' \
     >   -d 'to_msisdn=27123456782' \
@@ -216,7 +216,7 @@ Personalized SMSs can be sent by specifying a template and the accompanying vari
 All template variables should be prefixed with 'template_'. In the template you can refer to the values without their prefix.
 
     $ curl -u 'username:password' -X POST \
-    > http://localhost:8000/api/v1/sms/template_send.html \
+    > http://localhost:8000/api/v1/sms/template_send.json \
     > -d 'to_msisdn=27123456789' \
     > -d 'to_msisdn=27123456789' \
     > -d 'to_msisdn=27123456789' \
