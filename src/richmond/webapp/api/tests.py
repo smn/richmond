@@ -99,6 +99,18 @@ class ApiViewTestCase(TestCase):
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(SentSMS.objects.count(), 3)
     
+    def test_template_sms_sending(self):
+        self.assertEquals(SentSMS.objects.count(), 0)
+        resp = self.client.post(reverse('api:sms-template-send'), {
+            'to_msisdn': ['27123456780','27123456781','27123456782'],
+            'template_first_name': ['Name 1', 'Name 2', 'Name 3'],
+            'template_last_name': ['Surname 1', 'Surname 2', 'Surname 3'],
+            'from_msisdn': '27123456789',
+            'template': 'Hi {{first_name}} {{last_name}}',
+        })
+        self.assertEquals(resp.status_code, 200)
+        self.assertEquals(SentSMS.objects.count(), 3)
+    
     def test_sms_receiving(self):
         self.assertEquals(ReceivedSMS.objects.count(), 0)
         resp = self.client.post(reverse('api:sms-receive'), {

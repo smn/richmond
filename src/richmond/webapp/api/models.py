@@ -94,6 +94,7 @@ class SentSMS(models.Model):
                                             self.get_delivery_status_display(), 
                                             self.delivered_at)
 
+
 class ReceivedSMS(models.Model):
     api_id = models.CharField(max_length=32)
     moMsgId = models.CharField(max_length=32)

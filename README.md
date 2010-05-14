@@ -209,6 +209,53 @@ Sending multiple SMSs is as simple as sending a simple SMS. Just specify multipl
         }
     ]
 
+**Sending Personalized SMSs**
+
+Personalized SMSs can be sent by specifying a template and the accompanying variables.
+
+All template variables should be prefixed with 'template_'. In the template you can refer to the values without their prefix.
+
+    $ curl -u 'username:password' -X POST \
+    > http://localhost:8000/api/v1/sms/template_send.html \
+    > -d 'to_msisdn=27123456789' \
+    > -d 'to_msisdn=27123456789' \
+    > -d 'to_msisdn=27123456789' \
+    > -d 'from_msisdn=27123456789' \
+    > -d 'template_name=Simon' \
+    > -d 'template_surname=de Haan' \
+    > -d 'template_name=Jack' \
+    > -d 'template_surname=Jill' \
+    > -d 'template_name=Foo' \
+    > -d 'template_surname=Bar' \
+    > -d 'template=Hello {{name}} {{surname}}'
+    [
+        {
+            "delivered_at": "2010-05-14 04:42:09", 
+            "id": 6, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456789", 
+            "delivery_status": 0, 
+            "message": "Hello Foo Bar"
+        }, 
+        {
+            "delivered_at": "2010-05-14 04:42:09", 
+            "id": 7, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456789", 
+            "delivery_status": 0, 
+            "message": "Hello Jack Jill"
+        }, 
+        {
+            "delivered_at": "2010-05-14 04:42:09", 
+            "id": 8, 
+            "from_msisdn": "27123456789", 
+            "to_msisdn": "27123456789", 
+            "delivery_status": 0, 
+            "message": "Hello Simon de Haan"
+        }
+    ]
+
+
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
 [pypi]: http://pypi.python.org/pypi/

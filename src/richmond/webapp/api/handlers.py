@@ -12,6 +12,8 @@ from richmond.webapp.api import signals
 from alexandria.loader.base import YAMLLoader
 from alexandria.dsl.utils import dump_menu
 
+import pystache
+
 class ConversationHandler(BaseHandler):
     allowed_methods = ('POST',)
     
@@ -70,6 +72,50 @@ class SendSMSHandler(BaseHandler):
         return map(send_one, request.POST.getlist('to_msisdn'))
     
 
+
+class SendTemplateSMSHandler(BaseHandler):
+    """
+    FIXME: My eyes bleed
+    """
+    allowed_methods = ('POST',)
+    # model = SentTemplateSMS
+    exclude = ('created_at', 'updated_at', )
+    
+    @throttle(60, 60)
+    # @validate(forms.SentTemplateSMSForm)
+    def create(self, request):
+        template_string = request.POST.get('template')
+        template = pystache.Template(template_string)
+        
+        def send_one(msisdn, context):
+            logging.debug('Scheduling an SMS to: %s' % msisdn)
+            send_sms = SentSMS(
+                to_msisdn = msisdn,
+                from_msisdn = request.POST.get('from_msisdn'),
+                message = template.render(context=context)
+            )
+            send_sms.save()
+            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
+            return send_sms
+        
+        msisdn_list = request.POST.getlist('to_msisdn')
+        # not very happy with this template prefix filtering
+        context_list = [(key.replace('template_',''), 
+                            request.POST.getlist(key)) 
+                                for key in request.POST
+                                if key.startswith('template_')]
+        # check if the nr of entries match
+        if not all([len(value) == len(msisdn_list) 
+                        for key, value in context_list]):
+            return HttpResponse("Number of to_msisdns and template variables"
+                                " do not match")
+        responses = []
+        for msisdn in msisdn_list:
+            responses.append(send_one(msisdn, dict(
+                (var_name, var_value_list.pop())
+                for var_name, var_value_list in context_list
+            )))
+        return responses
 
 class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
