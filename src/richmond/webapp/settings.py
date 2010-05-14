@@ -83,7 +83,4 @@ INSTALLED_APPS = (
 )
 
 PISTON_DISPLAY_ERRORS = True
-RICHMOND_API_CALLBACKS = {
-    # whenever we receive an SMS we'll fire POST to here
-    'sms_received': ['http://localhost/callbacks/path',]
-}
+AUTH_PROFILE_MODULE = 'api.Profile'

@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from datetime import datetime
 import logging
 from clickatell import Clickatell
@@ -73,12 +74,13 @@ class ClickatellManager(Clickatell):
 # Create your models here.
 class SentSMS(models.Model):
     """An Message to be sent through Richmond"""
+    user = models.ForeignKey(User)
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)
     message = models.CharField(blank=False, max_length=160)
-    created_at = models.DateTimeField(blank=True, default=datetime.now)
-    updated_at = models.DateTimeField(blank=True, default=datetime.now)
-    delivered_at = models.DateTimeField(blank=True, default=datetime.now)
+    created_at = models.DateTimeField(blank=True, auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, auto_now=True)
+    delivered_at = models.DateTimeField(blank=True, null=True)
     delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
     
@@ -96,6 +98,7 @@ class SentSMS(models.Model):
 
 
 class ReceivedSMS(models.Model):
+    user = models.ForeignKey(User)
     api_id = models.CharField(max_length=32)
     moMsgId = models.CharField(max_length=32)
     _from = models.CharField(max_length=32)
@@ -118,6 +121,51 @@ class ReceivedSMS(models.Model):
         return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
                                                 self.timestamp)
 
+
+class Profile(models.Model):
+    """An API user's profile"""
+    user = models.ForeignKey(User, unique=True)
+    created_at = models.DateTimeField(blank=True, auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, auto_now=True)
+    
+    class Admin:
+        list_display = ('',)
+        search_fields = ('',)
+
+    def __unicode__(self):
+        return u"Profile"
+    
+    def set_callback(self, name, url):
+        from forms import URLCallbackForm
+        kwargs = {
+            'name':name, 
+            'url': url,
+            'profile': self.pk
+        }
+        try:
+            form = URLCallbackForm(kwargs, instance=self.urlcallback_set.get(name=name))
+        except URLCallback.DoesNotExist, e:
+            form = URLCallbackForm(kwargs)
+        
+        if form.is_valid():
+            return form.save()
+        else:
+            return False
+        
+
+CALLBACK_CHOICES = (
+    ('sms_received', 'SMS Received'),
+    ('sms_receipt', 'SMS Receipt'),
+)
+
+class URLCallback(models.Model):
+    """A URL to with to post data for an event"""
+    profile = models.ForeignKey(Profile)
+    name = models.CharField(blank=True, max_length=255, choices=CALLBACK_CHOICES)
+    url = models.URLField(blank=True, verify_exists=False)
+    created_at = models.DateTimeField(blank=True, auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, auto_now=True)
+
 from django.db.models.signals import post_save
 from richmond.webapp.api import signals
 from richmond.webapp.api.signals import sms_scheduled, sms_received, sms_receipt
@@ -125,3 +173,5 @@ from richmond.webapp.api.signals import sms_scheduled, sms_received, sms_receipt
 sms_scheduled.connect(signals.sms_scheduled_handler, sender=SentSMS, weak=False)
 sms_received.connect(signals.sms_received_handler, sender=ReceivedSMS, weak=False)
 sms_receipt.connect(signals.sms_receipt_handler, sender=SentSMS, weak=False)
+
+post_save.connect(signals.create_profile_handler, sender=User)

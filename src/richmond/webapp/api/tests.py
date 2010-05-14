@@ -33,7 +33,7 @@ class APIClient(Client):
         self.password = password
 
 
-class ApiViewTestCase(TestCase):
+class ApiHandlerTestCase(TestCase):
     
     def setUp(self):
         self.client = APIClient()
@@ -64,7 +64,8 @@ class ApiViewTestCase(TestCase):
         """
         sms = SentSMS.objects.create(to_msisdn='27123456789',
                                     from_msisdn='27123456789',
-                                    message='testing api')
+                                    message='testing api',
+                                    user=self.user)
         self.assertEquals(sms.delivery_status, 0)
         resp = self.client.post(reverse('api:sms-receipt'), {
             'apiMsgId': 'a' * 32,
@@ -123,3 +124,23 @@ class ApiViewTestCase(TestCase):
         })
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(ReceivedSMS.objects.count(), 1)
+    
+class URLCallbackTestCase(TestCase):
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.client.login(username='api', password='password')
+        # create the user we need to be authorized
+        self.user = User.objects.create_user('api', 'api@domain.com', 'password')
+    
+    def tearDown(self):
+        pass
+    
+    def test_setting_callback_url(self):
+        self.assertEquals(URLCallback.objects.count(), 0)
+        resp = self.client.put(reverse('api:url-callbacks'), {
+            'sms_received': 'http://localhost/url/sms/received',
+            'sms_receipt': 'http://localhost/url/sms/receipt',
+        })
+        self.assertEquals(resp.status_code, 200)
+        self.assertEquals(URLCallback.objects.count(), 2)

@@ -5,7 +5,7 @@ from datetime import datetime
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 
-from richmond.webapp.api.models import SentSMS, ReceivedSMS
+from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
 from richmond.webapp.api import forms
 from richmond.webapp.api import signals
 
@@ -40,6 +40,7 @@ class SMSReceiptHandler(BaseHandler):
             timestamp = float(request.POST['timestamp'])
             
             sms = SentSMS.objects.get(id=pk)
+            sms.user = request.user
             sms.delivery_status = status
             sms.delivery_at = datetime.utcfromtimestamp(timestamp)
             sms.save()
@@ -56,7 +57,7 @@ class SMSReceiptHandler(BaseHandler):
 class SendSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
     model = SentSMS
-    exclude = ('created_at', 'updated_at', )
+    exclude = ('created_at', 'updated_at', 'user')
     
     @throttle(60, 60) # allow for 1 a second
     @validate(forms.SentSMSForm) # should validate as a valid SentSMS
@@ -66,6 +67,7 @@ class SendSMSHandler(BaseHandler):
             data = self.flatten_dict(request.POST)
             data['to_msisdn'] = msisdn
             send_sms = self.model(**data)
+            send_sms.user = request.user
             send_sms.save()
             signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
             return send_sms
@@ -92,7 +94,8 @@ class SendTemplateSMSHandler(BaseHandler):
             send_sms = SentSMS(
                 to_msisdn = msisdn,
                 from_msisdn = request.POST.get('from_msisdn'),
-                message = template.render(context=context)
+                message = template.render(context=context),
+                user=request.user
             )
             send_sms.save()
             signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
@@ -120,6 +123,7 @@ class SendTemplateSMSHandler(BaseHandler):
 class ReceiveSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
     model = ReceivedSMS
+    exclude = ('user',)
     
     @throttle(60, 60)
     @validate(forms.ReceivedSMSForm)
@@ -131,7 +135,22 @@ class ReceiveSMSHandler(BaseHandler):
         del request.POST['from']    # remove because otherwise Django will complain
                                     # about the field not being defined in the model
         logging.debug('Receiving an SMS from: %s' % request.POST['_from'])
+        request.POST['user'] = request.user
         receive_sms = super(ReceiveSMSHandler, self).create(request)
         signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms)
         return receive_sms
     
+
+
+class URLCallbackHandler(BaseHandler):
+    allowed_methods = ('PUT',)
+    model = URLCallback
+    exclude = ('profile','id')
+    
+    @throttle(60, 60)
+    def update(self, request):
+        profile = request.user.get_profile()
+        name_field = self.model._meta.get_field('name')
+        possible_keys = [key for key, value in name_field.choices]
+        return [profile.set_callback(key, request.POST.get(key)) \
+                                            for key in possible_keys]

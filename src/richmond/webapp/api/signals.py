@@ -8,7 +8,7 @@ except ImportError:
     from StringIO import StringIO
 
 from decorator import decorator
-from richmond.webapp.api.models import SentSMS, ReceivedSMS
+from richmond.webapp.api.models import SentSMS, ReceivedSMS, Profile, URLCallback
 
 from django.dispatch import Signal
 from django.core import serializers
@@ -43,11 +43,6 @@ def sms_received_handler(*args, **kwargs):
 @asynchronous_signal
 def sms_received_worker(received_sms):
     """FIXME: This needs to be smaller"""
-    if not hasattr(settings, 'RICHMOND_API_CALLBACKS'):
-        # no point in continuing
-        return
-    
-    
     post = received_sms.as_list_of_tuples()
     def callback(url):
         data = StringIO()
@@ -74,8 +69,9 @@ def sms_received_worker(received_sms):
             logging.error("Posting %s to %s resulted in error: %s" % (post, url, v))
             return (url, v)
         
-    
-    return map(callback, settings.RICHMOND_API_CALLBACKS['sms_received'])
+    return [callback(urlcallback.url)
+                for callback in 
+                URLCallback.objects.filter(name='sms_received')]
 
 
 def sms_receipt_handler(*args, **kwargs):
@@ -85,3 +81,11 @@ def sms_receipt_handler(*args, **kwargs):
 def sms_receipt_worker(sent_sms, receipt):
     logging.debug("Received receipt for %s -> %s" % (sent_sms.to_msisdn, 
                                                         receipt['status']))
+
+
+def create_profile_handler(*args, **kwargs):
+    if kwargs['created']:
+        create_profile_worker(kwargs['instance'])
+
+def create_profile_worker(user):
+    return Profile.objects.create(user=user)
