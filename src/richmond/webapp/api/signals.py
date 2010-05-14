@@ -43,8 +43,7 @@ def sms_received_handler(*args, **kwargs):
 @asynchronous_signal
 def sms_received_worker(received_sms):
     """FIXME: This needs to be smaller"""
-    post = received_sms.as_list_of_tuples()
-    def callback(url):
+    def callback(url, list_of_tuples):
         data = StringIO()
         ch = pycurl.Curl()
         ch.setopt(pycurl.URL, url)
@@ -57,7 +56,7 @@ def sms_received_worker(received_sms):
                 "Accept:"
             ])
         ch.setopt(pycurl.WRITEFUNCTION, data.write)
-        ch.setopt(pycurl.HTTPPOST, post)
+        ch.setopt(pycurl.HTTPPOST, list_of_tuples)
         ch.setopt(pycurl.FOLLOWLOCATION, 1)
         
         try:
@@ -69,7 +68,8 @@ def sms_received_worker(received_sms):
             logging.error("Posting %s to %s resulted in error: %s" % (post, url, v))
             return (url, v)
         
-    return [callback(urlcallback.url)
+    keys_and_values = received_sms.as_list_of_tuples()
+    return [callback(urlcallback.url, keys_and_values)
                 for callback in 
                 URLCallback.objects.filter(name='sms_received')]
 

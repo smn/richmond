@@ -90,6 +90,9 @@ class SentSMS(models.Model):
         list_display = ('',)
         search_fields = ('',)
     
+    class Meta:
+        ordering = ['-created_at']
+    
     def __unicode__(self):
         return u"SentSMS %s -> %s, %s @ %s" % (self.from_msisdn, 
                                             self.to_msisdn, 

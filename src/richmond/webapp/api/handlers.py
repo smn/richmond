@@ -57,7 +57,7 @@ class SMSReceiptHandler(BaseHandler):
 class SendSMSHandler(BaseHandler):
     allowed_methods = ('POST',)
     model = SentSMS
-    exclude = ('created_at', 'updated_at', 'user')
+    exclude = ('user',)
     
     @throttle(60, 60) # allow for 1 a second
     @validate(forms.SentSMSForm) # should validate as a valid SentSMS
@@ -71,8 +71,25 @@ class SendSMSHandler(BaseHandler):
             send_sms.save()
             signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
             return send_sms
-        return map(send_one, request.POST.getlist('to_msisdn'))
+        return [send_one(msisdn) for msisdn in 
+                    request.POST.getlist('to_msisdn')]
+
+class SentSMSStatusHandler(BaseHandler):
+    allowed_methods = ('GET',)
+    model = SentSMS
+    exclude = ('user',)
     
+    @throttle(60, 60)
+    def read(self, request, sms_id=None):
+        if sms_id:
+            return request.user.sentsms_set.filter(pk=sms_id)
+        else:
+            if 'since' in request.GET:
+                since = request.GET.get('since')
+                return request.user.sentsms_set.filter(updated_at__gte=since)
+            else:
+                limit = int(request.GET.get('limit', 50))
+                return request.user.sentsms_set.all()[:limit]
 
 
 class SendTemplateSMSHandler(BaseHandler):
