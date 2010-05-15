@@ -1,12 +1,4 @@
 import logging
-import pycurl
-try:
-    # cStringIO is faster
-    from cStringIO import StringIO
-except ImportError:
-    # otherwise this'll do
-    from StringIO import StringIO
-
 from decorator import decorator
 from richmond.webapp.api.models import (SentSMS, ReceivedSMS, Profile, 
                                         URLCallback)
@@ -45,9 +37,11 @@ def sms_received_handler(*args, **kwargs):
 @asynchronous_signal
 def sms_received_worker(received_sms):
     keys_and_values = received_sms.as_list_of_tuples()
-    return [callback(urlcallback.url, keys_and_values)
-                for callback in 
-                URLCallback.objects.filter(name='sms_received')]
+    profile = received_sms.user.get_profile()
+    urlcallback_set = profile.urlcallback_set.filter(name='sms_received')
+    resp = [callback(urlcallback.url, keys_and_values)
+                for urlcallback in urlcallback_set]
+    return resp
 
 
 def sms_receipt_handler(*args, **kwargs):
@@ -56,9 +50,9 @@ def sms_receipt_handler(*args, **kwargs):
 @asynchronous_signal
 def sms_receipt_worker(sent_sms, receipt):
     profile = sent_sms.user.get_profile()
-    callbacks = profile.urlcallback_set.filter(name='sms_receipt')
+    urlcallback_set = profile.urlcallback_set.filter(name='sms_receipt')
     return [callback(urlcallback.url, receipt.entries())
-                for callback in callbacks]
+                for urlcallback in urlcallback_set]
 
 
 def create_profile_handler(*args, **kwargs):

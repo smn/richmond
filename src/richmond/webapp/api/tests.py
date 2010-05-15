@@ -220,3 +220,13 @@ class URLCallbackTestCase(TestCase):
         })
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(URLCallback.objects.count(), 2)
+        resp = self.client.post(reverse('api:sms-receive'), {
+            'to': '27123456789',
+            'from': '27123456789',
+            'moMsgId': 'a' * 12,
+            'api_id': 'b' * 12,
+            'text': 'hello world',
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S") # MySQL format
+        })
+        # this should show up in the testing log because pycurl can't
+        # connect to the given host for the callback
