@@ -30,19 +30,19 @@ Make sure you have configured your login credentials & virtual host stuff in Rab
         '.*' '.*' '.*'
     Setting permissions for user "richmond" in vhost "richmond" ...
     ...done.
-    
+ 
 That last line gives the user 'richmond' on virtual host 'richmond' configure, read & write access to all resources that match those three regular expressions. Which, in this case, matches all resources in the vhost.
 
 This project uses [virtualenv][virtualenv] and [pip][pip] to to create a sandbox and manage the required libraries at the required versions. Make sure you have both installed.
 
 Setup a virtual python environment in the directory `ve`. The `--no-site-packages` makes sure that all required dependencies are installed your the virtual environments `site-packages` directory even if they exist in Python's global `site-packages` directory.
-    
+
     $ virtualenv --no-site-packages ./ve/ 
 
 Install the required libraries with pip into the virtual environment. They're pull in from both [pypi][pypi] and [GitHub][github].
 
     $ pip -E ./ve/ install -r config/requirements.pip
-    
+ 
 Start the environment by sourcing `activate`. This'll prepend the name of the virtual environment to your shell prompt, informing you that the prompt is still active.
 
     $ source ve/bin/activate
@@ -66,7 +66,7 @@ Make sure you update the configuration file in `config/richmond-broker.cfg` and 
     (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.broker.pid -n \     
         richmond_broker -c config/richmond-broker.cfg
     ...
-    
+ 
 Make sure you update the worker configuration in `config/richmond-worker.cfg` if the defaults aren't suitable and start a worker.
 
     $ source ve/bin/activate
@@ -91,16 +91,16 @@ We'll create a worker that responds to USSD json objects. We'll subclass the `ri
 The `USSDWorker` also provides a `reply(msisdn, message, type)` that publishes the message of the given type to the queue.
 
 Here's [working example][foobarworker]:
-    
+ 
     from richmond.workers.ussd import USSDWorker, SessionType
     from twisted.python import log
-    
+ 
     class FooBarWorker(USSDWorker):
-    
+ 
         def new_ussd_session(self, msisdn, message):
             """Respond to new sessions"""
             self.reply(msisdn, "foo?", SessionType.existing)
-        
+ 
         def existing_ussd_session(self, msisdn, message):
             """Respond to returning sessions"""
             if message == "bar" or message == "0": # sorry android is silly
@@ -110,15 +110,15 @@ Here's [working example][foobarworker]:
                 # replying with type `SessionType.existing` keeps the session
                 # open and prompts the user for input
                 self.reply(msisdn, "Say bar ...", SessionType.existing)
-        
+	        
         def timed_out_ussd_session(self, msisdn, message):
             """These timed out unfortunately"""
             log.msg("%s timed out" % msisdn)
-        
+	        
         def end_ussd_session(self, msisdn, message):
             """These ended the session themselves"""
             log.msg("%s ended session" % msisdn)
-    
+	    
 
 Start the worker:
 
@@ -137,9 +137,9 @@ The webapp is a regular Django application. For development start it within the 
     (ve)$ ./manage.py syncdb
     (ve)$ ./manage.py runserver
     ...
-    
+ 
 When running in production start it with the `twistd` plugin `richmond_webapp`
-    
+ 
     $ source ve/bin/activate
     (ve)$ twistd --pidfile=tmp/pids/richmond.webapp.pid -n richmond_webapp
 
