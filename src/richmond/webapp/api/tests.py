@@ -7,6 +7,7 @@ from time import time
 from datetime import datetime, timedelta
 
 from richmond.webapp.api.models import *
+from richmond.webapp.api.workers import WorkerManager, Worker, expose
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -220,3 +221,43 @@ class URLCallbackTestCase(TestCase):
         })
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(URLCallback.objects.count(), 2)
+        resp = self.client.post(reverse('api:sms-receive'), {
+            'to': '27123456789',
+            'from': '27123456789',
+            'moMsgId': 'a' * 12,
+            'api_id': 'b' * 12,
+            'text': 'hello world',
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S") # MySQL format
+        })
+        # this should show up in the testing log because pycurl can't
+        # connect to the given host for the callback
+
+
+class TestWorker(Worker):
+    @expose
+    def heavy_work(self, argument, keyword=None):
+        logging.debug("doing heavy work")
+        return (argument, keyword)
+
+class WorkerTestCase(TestCase):
+    
+    fixtures = ['user_set', 'sentsms_set']
+    
+    def test_sync_work_manager(self):
+        sync_work_manager = WorkerManager(async=False)
+        sync_work_manager.register('synchronous', TestWorker())
+        
+        argument, keyword = sync_work_manager.synchronous.heavy_work(1)
+        self.assertEquals(argument, 1)
+    
+    def test_async_work_manager(self):
+        async_work_manager = WorkerManager(async=True)
+        async_work_manager.register('asynchronous', TestWorker())
+        
+        job = async_work_manager.asynchronous.heavy_work(1, keyword="two")
+        self.assertEquals(job.job_description['class'], 
+                                'richmond.webapp.api.tests.TestWorker')
+        self.assertEquals(job.job_description['function'], 'heavy_work')
+        self.assertEquals(job.job_description['args'], (1,))
+        self.assertEquals(job.job_description['kwargs'], {"keyword": "two"})
+    

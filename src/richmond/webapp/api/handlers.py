@@ -56,7 +56,7 @@ class SMSReceiptHandler(BaseHandler):
             sms.save()
             
             signals.sms_receipt.send(sender=SentSMS, instance=sms, 
-                                        receipt=request.POST.copy())
+                                        pk=sms.pk, receipt=request.POST.copy())
             
             return rc.CREATED
         except SentSMS.DoesNotExist, e:
@@ -82,7 +82,8 @@ class SendSMSHandler(BaseHandler):
             send_sms = self.model(**data)
             send_sms.user = request.user
             send_sms.save()
-            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
+            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms,
+                                        pk=send_sms.pk)
             return send_sms
         return [send_one(msisdn) for msisdn in 
                     request.POST.getlist('to_msisdn')]
@@ -137,7 +138,8 @@ class SendTemplateSMSHandler(BaseHandler):
                 user=request.user
             )
             send_sms.save()
-            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms)
+            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms, 
+                                        pk=send_sms.pk)
             return send_sms
         
         msisdn_list = request.POST.getlist('to_msisdn')
@@ -176,7 +178,8 @@ class ReceiveSMSHandler(BaseHandler):
         logging.debug('Receiving an SMS from: %s' % request.POST['_from'])
         request.POST['user'] = request.user
         receive_sms = super(ReceiveSMSHandler, self).create(request)
-        signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms)
+        signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms, 
+                                    pk=receive_sms.pk)
         return receive_sms
     
 

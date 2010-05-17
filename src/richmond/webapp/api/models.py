@@ -1,10 +1,13 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from datetime import datetime
 import logging
 from clickatell import Clickatell
 from utils import model_instance_to_key_values
 from django.core import serializers
+from richmond.webapp.api.workers import Worker, WorkerManager, expose
+from richmond.webapp.api.utils import callback
 
 CLICKATELL_ERROR_CODES = (
     (001, 'Authentication failed'),
@@ -57,12 +60,14 @@ CLICKATELL_MESSAGE_STATUSES = (
 )
 
 
-class ClickatellManager(Clickatell):
+class ClickatellWorker(Worker):
     
-    def deliver(self, pk):
-        return self.sendmsg(SentSMS.objects.get(pk=pk))
+    @expose
+    def deliver(Worker, pk):
+        return ClickatellWorker.sendmsg(SentSMS.objects.get(pk=pk))
     
-    def sendmsg(self, instance):
+    @expose
+    def sendmsg(Worker, instance):
         message = {
             'to': instance.to_msisdn,
             'from': instance.from_msisdn,
@@ -71,7 +76,33 @@ class ClickatellManager(Clickatell):
             'climsgid': instance.pk
         }
         logging.debug("Clickatell delivery: %s" % message)
+        return message
+
+
+class ReceivedSMSWorker(Worker):
     
+    @expose
+    def callback(Worker, pk):
+        received_sms = ReceivedSMS.objects.get(pk=pk)
+        keys_and_values = received_sms.as_list_of_tuples()
+        profile = received_sms.user.get_profile()
+        urlcallback_set = profile.urlcallback_set.filter(name='sms_received')
+        resp = [callback(urlcallback.url, keys_and_values)
+                    for urlcallback in urlcallback_set]
+        return resp
+        
+
+
+class SentSMSReceiptWorker(Worker):
+    @expose
+    def callback(Worker, pk, receipt):
+        sent_sms = SentSMS.objects.get(pk=pk)
+        profile = sent_sms.user.get_profile()
+        urlcallback_set = profile.urlcallback_set.filter(name='sms_receipt')
+        return [callback(urlcallback.url, receipt.entries())
+                    for urlcallback in urlcallback_set]
+        
+
 # Create your models here.
 class SentSMS(models.Model):
     """An Message to be sent through Richmond"""
@@ -85,7 +116,9 @@ class SentSMS(models.Model):
     delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
     
-    clickatell = ClickatellManager('username', 'password', 'api_id')
+    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
+    workers.register('clickatell', ClickatellWorker())
+    workers.register('receipt', SentSMSReceiptWorker())
     
     class Admin:
         list_display = ('',)
@@ -114,6 +147,9 @@ class ReceivedSMS(models.Model):
     text = models.CharField(max_length=160)
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
+    
+    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
+    workers.register('received', ReceivedSMSWorker())
     
     class Admin:
         list_display = ('',)
