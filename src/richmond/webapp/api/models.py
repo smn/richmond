@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from datetime import datetime
 import logging
@@ -75,6 +76,7 @@ class ClickatellWorker(Worker):
             'climsgid': instance.pk
         }
         logging.debug("Clickatell delivery: %s" % message)
+        return message
 
 
 class ReceivedSMSWorker(Worker):
@@ -113,10 +115,10 @@ class SentSMS(models.Model):
     delivered_at = models.DateTimeField(blank=True, null=True)
     delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
-    workers = WorkerManager(
-        clickatell = ClickatellWorker(),
-        receipt = SentSMSReceiptWorker(),
-    )
+    
+    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
+    workers.register('clickatell', ClickatellWorker())
+    workers.register('receipt', SentSMSReceiptWorker())
     
     class Admin:
         list_display = ('',)
@@ -146,9 +148,8 @@ class ReceivedSMS(models.Model):
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
     
-    workers = WorkerManager(
-        received=ReceivedSMSWorker()
-    )
+    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
+    workers.register('received', ReceivedSMSWorker())
     
     class Admin:
         list_display = ('',)

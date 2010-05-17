@@ -15,6 +15,7 @@ class Worker(object):
         klass.exposed_functions.append(fn.func_name)
         return classmethod(fn)
 
+# This is ugly, not sure how to fix it yet though.
 expose = Worker.expose
 
 
@@ -28,7 +29,6 @@ class Job(object):
                         "the queue for background processing: %s" % 
                         simplejson.dumps(job_description))
         self.job_description = job_description
-        self.process()
     
     def process(self):
         """Process the job_description"""
@@ -59,17 +59,25 @@ class BackgroundWorker(object):
     job description to the queue
     """
     
-    def __init__(self, worker_class):
-        self.worker_class = worker_class
+    def __init__(self, async, worker):
+        self.worker = worker
+        self.async = async
         
     def __getattr__(self, attname):
-        """Get the attribute from the worker_class unless exposed_functions
+        """Get the attribute from the worker unless exposed_functions
         is defined and it isn't listed in it."""
-        exposed_functions = self.worker_class.exposed_functions
+        exposed_functions = self.worker.exposed_functions
         if exposed_functions and attname not in exposed_functions:
             raise AttributeError, "%s is not an exposed function" % attname
-        return Job.schedule(self.worker_class, 
-                                getattr(self.worker_class, attname))
+        scheduler = Job.schedule(self.worker, 
+                                getattr(self.worker, attname))
+        if self.async:
+            return scheduler
+        else:            
+            def sync_wrapper(*args, **kwargs):
+                job = scheduler(*args, **kwargs)
+                return job.process()
+            return sync_wrapper
     
 
 
@@ -77,13 +85,23 @@ class WorkerManager(object):
     
     default_wrapper = BackgroundWorker
     
-    def __init__(self, wrapper=default_wrapper, **workers):
+    def __init__(self, wrapper=default_wrapper, async=True, workers={}):
         """
         All workers are specified as key word arguments, the keys
         are automatically made attributes on the WorkerManager
         """
         self.workers = workers
         self.wrapper = wrapper
+        self.async = async
         for name, worker in self.workers.items():
-            setattr(self, name, self.wrapper(worker))
+            self.register(name, worker)
     
+    def register(self, name, worker):
+        """Register a worker"""
+        wrapped_worker = self.workers.setdefault(name, 
+                            self.wrapper(async=self.async, worker=worker))
+        if hasattr(self, name):
+            raise RuntimeError, "%s already has an attribute called %s" % \
+                                    (self, name)
+        setattr(self, name, wrapped_worker)
+        return wrapped_worker
