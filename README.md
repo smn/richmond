@@ -39,7 +39,7 @@ Setup a virtual python environment in the directory `ve`. The `--no-site-package
 
     $ virtualenv --no-site-packages ./ve/ 
 
-Install the required libraries with pip into the virtual environment. They're pull in from both [pypi][pypi] and [GitHub][github].
+Install the required libraries with pip into the virtual environment. They're pull in from both [pypi][pypi] and [GitHub][github]. Make sure you have the development package for python (python-dev or python-devel or something of that sort) installed, Twisted needs it when it's being built.
 
     $ pip -E ./ve/ install -r config/requirements.pip
  
