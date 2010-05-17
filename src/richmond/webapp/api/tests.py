@@ -7,6 +7,7 @@ from time import time
 from datetime import datetime, timedelta
 
 from richmond.webapp.api.models import *
+from richmond.webapp.api.workers import WorkerManager
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -230,3 +231,18 @@ class URLCallbackTestCase(TestCase):
         })
         # this should show up in the testing log because pycurl can't
         # connect to the given host for the callback
+
+
+class WorkerTestCase(TestCase):
+    
+    def setUp(self):
+        pass
+    
+    def tearDown(self):
+        pass
+    
+    def test_background_scheduling(self):
+        self.assertTrue(isinstance(SentSMS.workers, WorkerManager))
+        # self.assertTrue(len(SentSMS.workers.workers) == 3)
+        # print SentSMS.workers.clickatell.deliver
+    
