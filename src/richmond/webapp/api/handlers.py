@@ -184,17 +184,22 @@ class ReceiveSMSHandler(BaseHandler):
     exclude = ('user',)
     
     @throttle(60, 60)
-    @validate(forms.ReceivedSMSForm)
     def create(self, request):
         # update the POST to have the `_from` key copied from `from`. 
         # The model has `_from` defined because `from` is a protected python
         # statement
-        request.POST['_from'] = request.POST['from']
-        del request.POST['from']    # remove because otherwise Django will complain
-                                    # about the field not being defined in the model
-        logging.debug('Receiving an SMS from: %s' % request.POST['_from'])
-        request.POST['user'] = request.user
-        receive_sms = super(ReceiveSMSHandler, self).create(request)
+        data = request.POST.copy()
+        data.update({
+            '_from': data['from'],
+            'user': request.user.pk
+        })
+        del data['from']
+        form = forms.ReceivedSMSForm(data)
+        if not form.is_valid():
+            raise FormValidationError(form)
+        
+        receive_sms = form.save()
+        logging.debug('Receiving an SMS from: %s' % receive_sms._from)
         signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms, 
                                     pk=receive_sms.pk)
         return receive_sms
