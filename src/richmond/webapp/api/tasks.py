@@ -24,7 +24,6 @@ class ReceiveSMSTask(Task):
     def run(self, pk):
         received_sms = ReceivedSMS.objects.get(pk=pk)
         keys_and_values = received_sms.as_tuples()
-        print received_sms.as_dict()
         profile = received_sms.user.get_profile()
         urlcallback_set = profile.urlcallback_set.filter(name='sms_received')
         resp = [callback(urlcallback.url, keys_and_values)

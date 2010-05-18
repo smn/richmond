@@ -1,3 +1,4 @@
+import logging
 from django.dispatch import Signal
 from richmond.webapp.api.models import Profile
 from richmond.webapp.api.tasks import SendSMSTask, ReceiveSMSTask, DeliveryReportTask

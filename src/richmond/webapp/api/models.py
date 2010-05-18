@@ -106,13 +106,15 @@ class ReceivedSMS(models.Model):
         get_latest_by = ['created_at']
     
     def as_dict(self):
+        """Return variables ready made for a URL callback"""
         _dict = model_to_dict(self, exclude='_from')
-        _dict.update({'form': str(self._from)})
+        _dict.update({'from': str(self._from)})
         return _dict
     
     def as_tuples(self):
+        """Return variables ready made for a URL callback"""
         tuples = model_to_tuples(self, exclude='_from')
-        return tuples + (('from', str(self._form)),)
+        return tuples + (('from', str(self._from)),)
     
     def __unicode__(self):
         return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
