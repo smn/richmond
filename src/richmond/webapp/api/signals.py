@@ -1,12 +1,6 @@
-import logging
-from decorator import decorator
-from richmond.webapp.api.models import (SentSMS, ReceivedSMS, Profile, 
-                                        URLCallback)
-from richmond.webapp.api.utils import callback
-
 from django.dispatch import Signal
-from django.core import serializers
-from django.conf import settings
+from richmond.webapp.api.models import Profile
+from richmond.webapp.api.tasks import SendSMSTask, ReceiveSMSTask, DeliveryReportTask
 
 # custom signals for the api
 sms_scheduled = Signal(providing_args=['instance', 'pk'])
@@ -19,21 +13,21 @@ def sms_scheduled_handler(*args, **kwargs):
 
 def sms_scheduled_worker(sent_sms_pk):
     """Responsibile for delivering of SMSs"""
-    SentSMS.workers.get('clickatell').deliver(pk=sent_sms_pk)
+    SendSMSTask.delay(pk=sent_sms_pk)
 
 def sms_received_handler(*args, **kwargs):
     sms_received_worker(kwargs['pk'])
 
 def sms_received_worker(received_sms_pk):
     """Responsible for dealing with received SMSs"""
-    ReceivedSMS.workers.get('received').callback(pk=received_sms_pk)
+    ReceiveSMSTask.delay(pk=received_sms_pk)
 
 def sms_receipt_handler(*args, **kwargs):
     sms_receipt_worker(kwargs['pk'],kwargs['receipt'])
 
 def sms_receipt_worker(sent_sms_pk, receipt):
     """Responsible for dealing with received SMS delivery receipts"""
-    SentSMS.workers.get('receipt').callback(pk=sent_sms_pk, receipt=receipt)
+    DeliveryReportTask.delay(pk=sent_sms_pk, receipt=receipt)
 
 def create_profile_handler(*args, **kwargs):
     if kwargs['created']:

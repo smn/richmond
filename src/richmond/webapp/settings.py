@@ -80,8 +80,22 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.sites',
     'richmond.webapp.api',
+    'celery',
 )
 
-PISTON_DISPLAY_ERRORS = True
+# link our profile to the django.contrib.auth.models.User
 AUTH_PROFILE_MODULE = 'api.Profile'
+
+# we want our workers to be async
 RICHMOND_WORKERS_ASYNC = False
+
+# for Piston
+PISTON_DISPLAY_ERRORS = True
+
+# for Carrot
+BROKER_HOST = "localhost"
+BROKER_PORT = 5672
+BROKER_USER = "richmond"
+BROKER_PASSWORD = "richmond"
+BROKER_VHOST = "/richmond"
+

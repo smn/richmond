@@ -8,7 +8,7 @@ except ImportError:
     # otherwise this'll do
     from StringIO import StringIO
 
-def model_instance_to_key_values(instance, exclude=[]):
+def model_to_tuples(instance, exclude=[]):
     """
     Somewhat lame function to convert a model instance's fields & values to
     string values, ready for posting over HTTP
@@ -21,8 +21,8 @@ def model_instance_to_key_values(instance, exclude=[]):
     ...     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     ...     updated_at = models.DateTimeField(blank=True, auto_now=True)
     ... 
-    >>> model_instance_to_key_values(instance=TestModel())
-    [('id', 'None'), ('integer', '1'), ('_float', '1.0'), ('created_at', ''), ('updated_at', '')]
+    >>> model_to_tuples(instance=TestModel())
+    (('id', 'None'), ('integer', '1'), ('_float', '1.0'), ('created_at', ''), ('updated_at', ''))
     >>> 
     
     """
@@ -30,7 +30,10 @@ def model_instance_to_key_values(instance, exclude=[]):
                 if field.name not in exclude]
     resp = [(str(field.name), str(field.value_to_string(instance))) 
                 for field in fields]
-    return resp
+    return tuple(resp)
+
+def model_to_dict(instance, exclude=[]):
+    return dict(model_to_tuples(instance, exclude))
 
 def callback(url, list_of_tuples):
     """

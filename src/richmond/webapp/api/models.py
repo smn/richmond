@@ -4,10 +4,8 @@ from django.contrib.auth.models import User
 from datetime import datetime
 import logging
 from clickatell import Clickatell
-from utils import model_instance_to_key_values
+from utils import model_to_tuples, model_to_dict
 from django.core import serializers
-from richmond.webapp.api.workers import Worker, WorkerManager, expose
-from richmond.webapp.api.utils import callback
 
 CLICKATELL_ERROR_CODES = (
     (001, 'Authentication failed'),
@@ -59,51 +57,6 @@ CLICKATELL_MESSAGE_STATUSES = (
     (12, 'Out of credit'),
 )
 
-
-class ClickatellWorker(Worker):
-    
-    @expose
-    def deliver(Worker, pk):
-        return ClickatellWorker.sendmsg(SentSMS.objects.get(pk=pk))
-    
-    @expose
-    def sendmsg(Worker, instance):
-        message = {
-            'to': instance.to_msisdn,
-            'from': instance.from_msisdn,
-            'text': instance.message,
-            'msg_type': 'SMS_TEXT',
-            'climsgid': instance.pk
-        }
-        logging.debug("Clickatell delivery: %s" % message)
-        return message
-
-
-class ReceivedSMSWorker(Worker):
-    
-    @expose
-    def callback(Worker, pk):
-        received_sms = ReceivedSMS.objects.get(pk=pk)
-        keys_and_values = received_sms.as_list_of_tuples()
-        profile = received_sms.user.get_profile()
-        urlcallback_set = profile.urlcallback_set.filter(name='sms_received')
-        resp = [callback(urlcallback.url, keys_and_values)
-                    for urlcallback in urlcallback_set]
-        return resp
-        
-
-
-class SentSMSReceiptWorker(Worker):
-    @expose
-    def callback(Worker, pk, receipt):
-        sent_sms = SentSMS.objects.get(pk=pk)
-        profile = sent_sms.user.get_profile()
-        urlcallback_set = profile.urlcallback_set.filter(name='sms_receipt')
-        return [callback(urlcallback.url, receipt.entries())
-                    for urlcallback in urlcallback_set]
-        
-
-# Create your models here.
 class SentSMS(models.Model):
     """An Message to be sent through Richmond"""
     user = models.ForeignKey(User)
@@ -115,10 +68,6 @@ class SentSMS(models.Model):
     delivered_at = models.DateTimeField(blank=True, null=True)
     delivery_status = models.IntegerField(blank=True, null=True, default=0,
                                         choices=CLICKATELL_MESSAGE_STATUSES)
-    
-    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
-    workers.register('clickatell', ClickatellWorker())
-    workers.register('receipt', SentSMSReceiptWorker())
     
     class Admin:
         list_display = ('',)
@@ -148,9 +97,6 @@ class ReceivedSMS(models.Model):
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
     
-    workers = WorkerManager(async=settings.RICHMOND_WORKERS_ASYNC)
-    workers.register('received', ReceivedSMSWorker())
-    
     class Admin:
         list_display = ('',)
         search_fields = ('',)
@@ -159,10 +105,14 @@ class ReceivedSMS(models.Model):
         ordering = ['-created_at']
         get_latest_by = ['created_at']
     
-    def as_list_of_tuples(self):
-        tuple_list = model_instance_to_key_values(self, exclude='_from')
-        tuple_list.append(('from', str(self._from)))
-        return tuple_list
+    def as_dict(self):
+        _dict = model_to_dict(self, exclude='_from')
+        _dict.update({'form': str(self._from)})
+        return _dict
+    
+    def as_tuples(self):
+        tuples = model_to_tuples(self, exclude='_from')
+        return tuples + (('from', str(self._form)),)
     
     def __unicode__(self):
         return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
