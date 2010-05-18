@@ -92,10 +92,33 @@ RICHMOND_WORKERS_ASYNC = False
 # for Piston
 PISTON_DISPLAY_ERRORS = True
 
-# for Carrot
+# for Celery
 BROKER_HOST = "localhost"
 BROKER_PORT = 5672
 BROKER_USER = "richmond"
 BROKER_PASSWORD = "richmond"
 BROKER_VHOST = "/richmond"
 
+CELERYD_LOG_FILE = 'logs/richmond.celeryd.log'
+CELERYD_LOG_LEVEL = 'DEBUG'
+
+CELERY_QUEUES = {
+    "default": {
+        "exchange": "richmond",
+        "binding_key": "richmond.webapp"},
+    "sms_send": {
+        "exchange": "richmond",
+        "binding_key": "richmond.webapp.sms.send",
+    },
+    "sms_receive": {
+        "exchange": "richmond",
+        "binding_key": "richmond.webapp.sms.receive",
+    },
+    "sms_receipt": {
+        "exchange": "richmond",
+        "binding_key": "richmond.webapp.sms.receipt",
+    },
+}
+CELERY_DEFAULT_QUEUE = "default"
+CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
+CELERY_DEFAULT_ROUTING_KEY = "richmond.webapp"

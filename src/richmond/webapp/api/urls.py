@@ -28,9 +28,3 @@ urlpatterns = patterns('',
     (r'^sms/receive\.json$', sms_receive_resource, {}, 'sms-receive'),
     (r'^callback\.html$', views.example_sms_callback, {}, 'sms-example-callback'),
 )
-
-from celery.decorators import task
-
-@task
-def add(x, y):
-    return x + y
