@@ -4,11 +4,11 @@ txamqp==0.3
 Django==1.2
 importlib==1.0.2
 nose==0.11.3
-django-piston==0.2.2
 PyYAML==3.09
 pycurl==7.18.1
 decorator==3.1.2
 pystache==0.3.1
+-e hg+http://bitbucket.org/jespern/django-piston@247#egg=django-piston
 -e git+ssh://git@github.com/praekelt/python-ssmi.git#egg=python-ssmi
 -e git+git://github.com/smn/alexandria.git#egg=smn-alexandria
 -e git+git://github.com/inoi/nosedjango.git#egg=nosedjango

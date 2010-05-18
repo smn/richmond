@@ -4,7 +4,6 @@ from richmond.webapp.api.models import SentSMS, URLCallback
 class SentSMSForm(forms.ModelForm):
     class Meta:
         model = SentSMS
-    user = forms.IntegerField(required=False)
 
 class URLCallbackForm(forms.ModelForm):
     class Meta:

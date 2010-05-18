@@ -11,7 +11,7 @@
   options:
     - windows
     - apple
-    - "*nix"
+    - unix
     - other
 - question: What is your favorite development environment?
   options:

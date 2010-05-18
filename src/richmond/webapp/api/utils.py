@@ -1,5 +1,6 @@
 import pycurl
 import logging
+from decorator import decorator
 try:
     # cStringIO is faster
     from cStringIO import StringIO

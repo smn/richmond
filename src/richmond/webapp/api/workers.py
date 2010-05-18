@@ -96,12 +96,10 @@ class WorkerManager(object):
         for name, worker in self.workers.items():
             self.register(name, worker)
     
+    def get(self, name):
+        return self.workers.get(name)
+    
     def register(self, name, worker):
         """Register a worker"""
-        wrapped_worker = self.workers.setdefault(name, 
-                            self.wrapper(async=self.async, worker=worker))
-        if hasattr(self, name):
-            raise RuntimeError, "%s already has an attribute called %s" % \
-                                    (self, name)
-        setattr(self, name, wrapped_worker)
-        return wrapped_worker
+        wrapped_worker = self.wrapper(async=self.async, worker=worker)
+        return self.workers.setdefault(name, wrapped_worker)

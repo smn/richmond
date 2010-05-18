@@ -1,9 +1,9 @@
-import re
-import logging
+import re, yaml, logging
 from datetime import datetime, timedelta
 
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
+from piston.utils import Mimer, FormValidationError
 
 from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
 from richmond.webapp.api import forms
@@ -14,7 +14,7 @@ from alexandria.dsl.utils import dump_menu
 
 import pystache
 
-def sent_sms_fields(model, include=[], exclude=[]):
+def specify_fields(model, include=[], exclude=[]):
     """
     Silly helper to allow me to specify includes & excludes using the model's
     fields as a base set instead of an empty set.
@@ -24,11 +24,19 @@ def sent_sms_fields(model, include=[], exclude=[]):
     return exclude, include
 
 
+# Complete reset, clear defaults - they're hard to debug
+Mimer.TYPES = {}
+# Specify the default Mime loader for YAML, Piston's YAML loader by default 
+# tries to wrap the loaded YAML data in a dict, which for our conversation 
+# YAML documents doesn't work.
+Mimer.register(yaml.safe_load, ('application/x-yaml',))
+
+
 class ConversationHandler(BaseHandler):
     allowed_methods = ('POST',)
     
-    @throttle(5, 10*60) # allow 5 times in 10 minutes
-    @require_mime('yaml')
+    # @throttle(5, 10*60) # allow 5 times in 10 minutes
+    # @require_mime('yaml')
     def create(self, request):
         menu = YAMLLoader().load_from_string(request.raw_post_data)
         dump = dump_menu(menu)
@@ -66,30 +74,30 @@ class SMSReceiptHandler(BaseHandler):
 
 class SendSMSHandler(BaseHandler):
     allowed_methods = ('GET', 'POST',)
-    model = SentSMS
-    
-    exclude, fields = sent_sms_fields(SentSMS, 
+    exclude, fields = specify_fields(SentSMS, 
         include=['delivery_status_display'],
         exclude=['user'])
     
+    def _send_one(self, **kwargs):
+        form = forms.SentSMSForm(kwargs)
+        if not form.is_valid():
+            raise FormValidationError(form)
+        send_sms = form.save()
+        logging.debug('Scheduling an SMS to: %s' % kwargs['to_msisdn'])
+        signals.sms_scheduled.send(sender=SentSMS, instance=send_sms,
+                                    pk=send_sms.pk)
+        return send_sms
+    
     @throttle(60, 60) # allow for 1 a second
-    @validate(forms.SentSMSForm) # should validate as a valid SentSMS
     def create(self, request):
-        def send_one(msisdn):
-            logging.debug('Scheduling an SMS to: %s' % msisdn)
-            data = self.flatten_dict(request.POST)
-            data['to_msisdn'] = msisdn
-            send_sms = self.model(**data)
-            send_sms.user = request.user
-            send_sms.save()
-            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms,
-                                        pk=send_sms.pk)
-            return send_sms
-        return [send_one(msisdn) for msisdn in 
-                    request.POST.getlist('to_msisdn')]
+        return [self._send_one(user=request.user.pk, 
+                                to_msisdn=msisdn,
+                                from_msisdn=request.POST.get('from_msisdn'),
+                                message=request.POST.get('message'))
+                    for msisdn in request.POST.getlist('to_msisdn')]
     
     @classmethod
-    def delivery_status_display(self, instance):
+    def delivery_status_display(kls, instance):
         return instance.get_delivery_status_display()
     
     @throttle(60, 60)
@@ -119,29 +127,30 @@ class SendTemplateSMSHandler(BaseHandler):
     FIXME: My eyes bleed
     """
     allowed_methods = ('POST',)
-    exclude, fields = sent_sms_fields(SentSMS, 
+    exclude, fields = specify_fields(SentSMS, 
         include=['delivery_status_display'],
-        exclude=['user'])
+        exclude=['user', re.compile(r'^_user_cache')])
+    
+    def _render_and_send_one(self, to_msisdn, from_msisdn, user_id, \
+                                template, context):
+        logging.debug('Scheduling an SMS to: %s' % to_msisdn)
+        form = forms.SentSMSForm({
+            'to_msisdn': to_msisdn,
+            'from_msisdn': from_msisdn,
+            'message': template.render(context=context),
+            'user': user_id
+        })
+        if not form.is_valid():
+            raise FormValidationError(form)
+        send_sms = form.save()
+        signals.sms_scheduled.send(sender=SentSMS, instance=send_sms, 
+                                    pk=send_sms.pk)
+        return send_sms
     
     @throttle(60, 60)
-    # @validate(forms.SentTemplateSMSForm)
     def create(self, request):
         template_string = request.POST.get('template')
         template = pystache.Template(template_string)
-        
-        def send_one(msisdn, context):
-            logging.debug('Scheduling an SMS to: %s' % msisdn)
-            send_sms = SentSMS(
-                to_msisdn = msisdn,
-                from_msisdn = request.POST.get('from_msisdn'),
-                message = template.render(context=context),
-                user=request.user
-            )
-            send_sms.save()
-            signals.sms_scheduled.send(sender=SentSMS, instance=send_sms, 
-                                        pk=send_sms.pk)
-            return send_sms
-        
         msisdn_list = request.POST.getlist('to_msisdn')
         # not very happy with this template prefix filtering
         context_list = [(key.replace('template_',''), 
@@ -151,14 +160,22 @@ class SendTemplateSMSHandler(BaseHandler):
         # check if the nr of entries match
         if not all([len(value) == len(msisdn_list) 
                         for key, value in context_list]):
-            return HttpResponse("Number of to_msisdns and template variables"
-                                " do not match")
+            response = rc.BAD_REQUEST
+            response.content = "Number of to_msisdns and template variables" \
+                                " do not match"
+            return response
         responses = []
         for msisdn in msisdn_list:
-            responses.append(send_one(msisdn, dict(
-                (var_name, var_value_list.pop())
-                for var_name, var_value_list in context_list
-            )))
+            context = dict([(var_name, var_value_list.pop())
+                                for var_name, var_value_list 
+                                in context_list])
+            send_sms = self._render_and_send_one(
+                to_msisdn=msisdn, 
+                from_msisdn=request.POST.get('from_msisdn'), 
+                user_id=request.user.pk,
+                template=template,
+                context=context)
+            responses.append(send_sms)
         return responses
 
 class ReceiveSMSHandler(BaseHandler):

@@ -19,21 +19,21 @@ def sms_scheduled_handler(*args, **kwargs):
 
 def sms_scheduled_worker(sent_sms_pk):
     """Responsibile for delivering of SMSs"""
-    SentSMS.workers.clickatell.deliver(pk=sent_sms_pk)
+    SentSMS.workers.get('clickatell').deliver(pk=sent_sms_pk)
 
 def sms_received_handler(*args, **kwargs):
     sms_received_worker(kwargs['pk'])
 
 def sms_received_worker(received_sms_pk):
     """Responsible for dealing with received SMSs"""
-    ReceivedSMS.workers.received.callback(pk=received_sms_pk)
+    ReceivedSMS.workers.get('received').callback(pk=received_sms_pk)
 
 def sms_receipt_handler(*args, **kwargs):
     sms_receipt_worker(kwargs['pk'],kwargs['receipt'])
 
 def sms_receipt_worker(sent_sms_pk, receipt):
     """Responsible for dealing with received SMS delivery receipts"""
-    SentSMS.workers.receipt.callback(pk=sent_sms_pk, receipt=receipt)
+    SentSMS.workers.get('receipt').callback(pk=sent_sms_pk, receipt=receipt)
 
 def create_profile_handler(*args, **kwargs):
     if kwargs['created']:

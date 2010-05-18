@@ -67,7 +67,6 @@ class ApiHandlerTestCase(TestCase):
         resp = self.client.post(reverse('api:conversation'), self.yaml_conversation,
                             content_type="application/x-yaml")
         self.assertContains(resp, 'Created', status_code=201)
-        
         resp = self.client.get(reverse('api:conversation'))
         self.assertEquals(resp.status_code, 405)
     
@@ -247,14 +246,14 @@ class WorkerTestCase(TestCase):
         sync_work_manager = WorkerManager(async=False)
         sync_work_manager.register('synchronous', TestWorker())
         
-        argument, keyword = sync_work_manager.synchronous.heavy_work(1)
+        argument, keyword = sync_work_manager.get('synchronous').heavy_work(1)
         self.assertEquals(argument, 1)
     
     def test_async_work_manager(self):
         async_work_manager = WorkerManager(async=True)
         async_work_manager.register('asynchronous', TestWorker())
         
-        job = async_work_manager.asynchronous.heavy_work(1, keyword="two")
+        job = async_work_manager.get('asynchronous').heavy_work(1, keyword="two")
         self.assertEquals(job.job_description['class'], 
                                 'richmond.webapp.api.tests.TestWorker')
         self.assertEquals(job.job_description['function'], 'heavy_work')
