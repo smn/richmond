@@ -10,3 +10,4 @@ _trial_temp/*
 src/*.egg-info/*
 *.log
 db/*.db
+environments/*

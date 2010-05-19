@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib import admin
 from datetime import datetime
 import logging
 from clickatell import Clickatell
@@ -164,6 +165,12 @@ class URLCallback(models.Model):
     url = models.URLField(blank=True, verify_exists=False)
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
+
+
+admin.site.register(SentSMS)
+admin.site.register(ReceivedSMS)
+admin.site.register(Profile)
+admin.site.register(URLCallback)
 
 from django.db.models.signals import post_save
 from richmond.webapp.api import signals

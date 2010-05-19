@@ -1,20 +1,28 @@
 import logging
+from django.conf import settings
 from celery.task import Task
 from celery.task.http import HttpDispatchTask
 from richmond.webapp.api.models import SentSMS, ReceivedSMS
 from richmond.webapp.api.utils import callback
+from richmond.webapp.api.clickatell import Clickatell
 
 class SendSMSTask(Task):
     def run(self, pk):
         send_sms = SentSMS.objects.get(pk=pk)
         message = {
             'to': send_sms.to_msisdn,
-            'from': send_sms.from_msisdn,
+            'sender': send_sms.from_msisdn,
             'text': send_sms.message,
             'msg_type': 'SMS_TEXT',
             'climsgid': send_sms.pk
         }
         logger = self.get_logger(pk=pk)
+        
+        clickatell = Clickatell(settings.CLICKATELL_USERNAME,
+                                settings.CLICKATELL_PASSWORD, 
+                                settings.CLICKATELL_API_ID)
+        clickatell.sendmsg(message)
+        
         logger.debug("Clickatell delivery: %s" % message)
         return message
 

@@ -99,8 +99,11 @@ BROKER_USER = "richmond"
 BROKER_PASSWORD = "richmond"
 BROKER_VHOST = "/richmond"
 
-CELERYD_LOG_FILE = 'logs/richmond.celeryd.log'
-CELERYD_LOG_LEVEL = 'DEBUG'
+if DEBUG:
+    CELERYD_LOG_LEVEL = 'DEBUG'
+    CELERYD_LOG_FILE = None
+else:
+    CELERYD_LOG_FILE = 'logs/richmond.celeryd.log'
 
 CELERY_QUEUES = {
     "default": {
@@ -122,3 +125,13 @@ CELERY_QUEUES = {
 CELERY_DEFAULT_QUEUE = "default"
 CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
 CELERY_DEFAULT_ROUTING_KEY = "richmond.webapp"
+
+# for Clickatell
+CLICKATELL_USERNAME = ''
+CLICKATELL_PASSWORD = ''
+CLICKATELL_API_ID = ''
+
+try:
+    from environments.production import *
+except ImportError:
+    pass

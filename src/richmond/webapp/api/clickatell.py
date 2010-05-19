@@ -171,22 +171,22 @@ class Clickatell(object):
 
         url = 'https://api.clickatell.com/http/sendmsg'
 
-        print message
-
         post = [
             ('session_id', self.session_id),
             ('to', message['to']),
             ('text', message['text']),
             ('from', message['sender']),
             ('max_credits', '1'),
-            ('deliv_ack', '1'),
-            ('callback', '3'),
-            ('climsgid', message['climsgid']),
+            ('deliv_ack', '1'), # request delivery acknowledgement
+            ('callback', '3'), # return all delivery statuses
+            ('mo', '1'), # expect a reply
+            ('req_feat', '48'), # alpha or numeric from feature required
+            ('climsgid', message['climsgid']), # our message id for internal reference
         ]
 
         post.append(('foobar', 'fooof'))
 
-        print post
+        post = [(str(key), str(value)) for (key, value) in post]
 
         result = self.curl (url, post)
 
@@ -224,6 +224,9 @@ class Clickatell(object):
         """
         Inteface for sending web requests to the Clickatell API Server
         """
+        
+        print "CURLING: %s to %s" % (post, url)
+        
         data = StringIO()
         self.ch.setopt(pycurl.URL, url)
         self.ch.setopt(pycurl.VERBOSE, 0)
@@ -242,5 +245,6 @@ class Clickatell(object):
             result = self.ch.perform()
         except pycurl.error, v:
             print v
-
-        return data.getvalue().split(": ")
+        rsp = data.getvalue()
+        print "RESP", rsp
+        return rsp.split(": ")
