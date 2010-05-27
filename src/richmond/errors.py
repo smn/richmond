@@ -1,0 +1,1 @@
+class RichmondError(Exception): pass
