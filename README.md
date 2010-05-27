@@ -8,8 +8,6 @@ If you're wondering about the name. Apparently Richmond has is a great city for 
 Getting started
 ---------------
 
-run `source setup-vritualenv.source` to do the virtualenv hoopla and install the requirements from `requirements.pip`.
-
 Make sure you have your AMQP broker running. I've only tested it with RabbitMQ, in theory, it should work with any other AMQP 0.8 spec based broker.
 
     $ rabbitmq-server
@@ -39,16 +37,16 @@ Setup a virtual python environment in the directory `ve`. The `--no-site-package
 
     $ virtualenv --no-site-packages ./ve/ 
 
-Install the required libraries with pip into the virtual environment. They're pull in from both [pypi][pypi] and [GitHub][github]. Make sure you have the development package for python (python-dev or python-devel or something of that sort) installed, Twisted needs it when it's being built.
-
-    $ pip -E ./ve/ install -r config/requirements.pip
- 
 Start the environment by sourcing `activate`. This'll prepend the name of the virtual environment to your shell prompt, informing you that the prompt is still active.
 
-    $ source ve/bin/activate
+        $ source ve/bin/activate
 
 When you're done run `deactivate` to exit the virtual environment.
 
+Install the required libraries with pip into the virtual environment. They're pulled in from both [pypi][pypi] and [GitHub][github]. Make sure you have the development package for python (python-dev or python-devel or something of that sort) installed, Twisted needs it when it's being built.
+
+    $ pip -E ./ve/ install -r config/requirements.pip
+ 
 Running Richmond
 ----------------
 
@@ -131,9 +129,12 @@ Start the worker:
 Running the Webapp / API
 ------------------------
 
-The webapp is a regular Django application. For development start it within the virtual environment:
+The webapp is a regular Django application. Before you start make sure the `DATABASE` settings in `src/richmond/webapp/settings.py` are up to date. `Richmond` is being developed with `PostgreSQL` as the default backend for the Django ORM but this isn't a requirement.
+
+For development start it within the virtual environment:
 
     $ source ve/bin/activate
+    (ve)$ python setup.py develop
     (ve)$ ./manage.py syncdb
     (ve)$ ./manage.py runserver
     ...
@@ -143,7 +144,7 @@ When running in production start it with the `twistd` plugin `richmond_webapp`
     $ source ve/bin/activate
     (ve)$ twistd --pidfile=tmp/pids/richmond.webapp.pid -n richmond_webapp
 
-Run the tests for the webapp API with ./manage.py as well:
+Run the tests for the webapp API with `./manage.py` as well:
 
     $ source ve/bin/activate
     (ve)$ ./manage.py test api
@@ -352,6 +353,20 @@ There are two types of callbacks defined. These are `sms_received` and `sms_rece
 
 The next time an SMS is received or a SMS receipt is delivered, Richmond will post the data to the URLs specified.
 
+Webapp Workers
+--------------
+
+Richmond uses [Celery][celery], the distributed task queue. The main Django process only registers when an SMS is received,sent or when a delivery report is received. The real work is done by the Celery workers.
+
+Start the Celery worker via `manage.py`:
+
+    (ve)$ ./manage.py celeryd
+    
+For a complete listing of the command line options available, use the help command:
+
+    (ve)$ ./manage.py help celeryd
+
+
 [virtualenv]: http://pypi.python.org/pypi/virtualenv
 [pip]: http://pypi.python.org/pypi/pip
 [pypi]: http://pypi.python.org/pypi/
@@ -359,3 +374,4 @@ The next time an SMS is received or a SMS receipt is delivered, Richmond will po
 [pubsub]: http://en.wikipedia.org/wiki/Publish/subscribe
 [competing consumers]: http://www.eaipatterns.com/CompetingConsumers.html
 [foobarworker]: http://github.com/smn/richmond/blob/master/richmond/workers/example.py
+[celery]: http://ask.github.com/celery
