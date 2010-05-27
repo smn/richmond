@@ -4,7 +4,6 @@ from django.contrib.auth.models import User
 from django.contrib import admin
 from datetime import datetime
 import logging
-from clickatell import Clickatell
 from utils import model_to_tuples, model_to_dict
 from django.core import serializers
 

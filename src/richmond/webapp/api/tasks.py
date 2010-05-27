@@ -4,30 +4,35 @@ from celery.task import Task
 from celery.task.http import HttpDispatchTask
 from richmond.webapp.api.models import SentSMS, ReceivedSMS
 from richmond.webapp.api.utils import callback
-from richmond.webapp.api.clickatell import Clickatell
+
+from clickatell.api import Clickatell
+from clickatell.response import OKResponse, ERRResponse
 
 class SendSMSTask(Task):
+    routing_key = 'richmond.webapp.sms.send'
+    
     def run(self, pk):
         send_sms = SentSMS.objects.get(pk=pk)
-        message = {
-            'to': send_sms.to_msisdn,
-            'sender': send_sms.from_msisdn,
-            'text': send_sms.message,
-            'msg_type': 'SMS_TEXT',
-            'climsgid': send_sms.pk
-        }
         logger = self.get_logger(pk=pk)
-        
         clickatell = Clickatell(settings.CLICKATELL_USERNAME,
                                 settings.CLICKATELL_PASSWORD, 
-                                settings.CLICKATELL_API_ID)
-        clickatell.sendmsg(message)
-        
-        logger.debug("Clickatell delivery: %s" % message)
-        return message
+                                settings.CLICKATELL_API_ID,
+                                sendmsg_defaults=settings.CLICKATELL_DEFAULTS['sendmsg'])
+        [resp] = clickatell.sendmsg(recipients=[send_sms.to_msisdn],
+                            sender=send_sms.from_msisdn,
+                            text=send_sms.message,
+                            climsgid=send_sms.pk)
+        logger.debug("Clickatell delivery: %s" % resp)
+        if isinstance(resp, OKResponse):
+            return resp
+        else:
+            logger.debug("Retrying...")
+            self.retry(args=[pk], kwargs={})
 
 
 class ReceiveSMSTask(Task):
+    routing_key = 'richmond.webapp.sms.receive'
+    
     """FIXME: We can probably use the HttpDispatchTask instead of this"""
     def run(self, pk):
         received_sms = ReceivedSMS.objects.get(pk=pk)
@@ -41,6 +46,8 @@ class ReceiveSMSTask(Task):
 
 
 class DeliveryReportTask(Task):
+    routing_key = 'richmond.webapp.sms.receipt'
+    
     """FIXME: We can probably use the HttpDispatchTask instead of this"""
     def run(self, pk, receipt):
         sent_sms = SentSMS.objects.get(pk=pk)

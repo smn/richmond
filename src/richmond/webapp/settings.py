@@ -125,11 +125,24 @@ CELERY_QUEUES = {
 CELERY_DEFAULT_QUEUE = "default"
 CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
 CELERY_DEFAULT_ROUTING_KEY = "richmond.webapp"
+# set the environment RICHMOND_SKIP_QUEUE to have the Celery tasks evaluated
+# immediately, skipping the queue.
+import os
+CELERY_ALWAYS_EAGER = os.environ.get('RICHMOND_SKIP_QUEUE', False)
 
 # for Clickatell
+from clickatell import constants as cc
 CLICKATELL_USERNAME = ''
 CLICKATELL_PASSWORD = ''
 CLICKATELL_API_ID = ''
+CLICKATELL_DEFAULTS = {
+    'sendmsg': {
+        'callback': cc.CALLBACK_ALL,
+        'deliv_ack': cc.YES,
+        'req_feat': cc.FEAT_ALPHA + cc.FEAT_NUMER + cc.FEAT_DELIVACK,
+        'msg_type': cc.SMS_DEFAULT,
+    }
+}
 
 try:
     from environments.production import *

@@ -138,7 +138,13 @@ For development start it within the virtual environment:
     (ve)$ ./manage.py syncdb
     (ve)$ ./manage.py runserver
     ...
- 
+
+For development it sometimes is handy to have Celery run in eager mode. In eager mode, tasks avoids the queue entirely and are processed immediately in the main process. Do this by settings the environment variable 'RICHMOND_SKIP_QUEUE'
+
+    (ve)$ RICHMOND_SKIP_QUEUE=True ./manage.py runserver
+
+This is specified in the `settings.py` file, if so desired, you can also default it to `DEBUG` so that when `DEBUG=True` the queue will always be skipped.
+
 When running in production start it with the `twistd` plugin `richmond_webapp`
  
     $ source ve/bin/activate
