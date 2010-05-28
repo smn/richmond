@@ -1,5 +1,5 @@
-from richmond.service import ssmi_service
 from richmond.services.base import RichmondService
+from richmond.services.truteq import ssmi_service
 from richmond.amqp.base import AMQPConsumer, AMQPPublisher
 from richmond.workers.ussd import SessionType
 

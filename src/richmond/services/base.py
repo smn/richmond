@@ -11,14 +11,16 @@ from richmond.errors import RichmondError
 
 class AMQPService(Service):
     
+    username = 'richmond'
+    password = 'richmond'
     host = 'localhost'
     port = 5672
     vhost = '/richmond'
     spec = 'config/amqp-spec-0-8.xml'
     
-    def __init__(self, username, password, **options):
-        self.username = username
-        self.password = password
+    def __init__(self, **options):
+        self.username = options.get('username', self.username)
+        self.password = options.get('password', self.password)
         self.host = options.get('host', self.host)
         self.port = options.get('port', self.port)
         self.vhost = options.get('vhost', self.vhost)

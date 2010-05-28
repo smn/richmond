@@ -31,10 +31,7 @@ class RichmondAMQClient(AMQClient):
         self.factory.onConnectionLost.callback(self)
     
 
-
 class AMQPConsumer(object):
-    
-    shutting_down = False
     
     def __init__(self):
         """Start the consumer"""
@@ -63,7 +60,7 @@ class AMQPConsumer(object):
         def read_messages():
             log.msg("Consumer starting...")
             try:
-                while not self.shutting_down:
+                while True:
                     log.msg("Waiting for messages")
                     message = yield self.queue.get()
                     self.consume_data(message)
@@ -73,10 +70,6 @@ class AMQPConsumer(object):
         yield None
         defer.returnValue(self)
     
-    def shutdown(self,reason="Twisted is shutting down"):
-        self.shutting_down = True
-        self.channel.close(reason)
-    
     def consume_data(self, message):
         log.msg("Received data: '%s' but doing nothing" % message.content.body, 
                                         logLevel=logging.DEBUG)
@@ -85,7 +78,6 @@ class AMQPConsumer(object):
     def ack(self, message):
         self.channel.basic_ack(message.delivery_tag, True)
     
-
 
 class AMQPPublisher(object):
     
@@ -134,5 +126,4 @@ class RichmondAMQPFactory(protocol.ClientFactory):
         prot.factory = self
         log.msg("RichmondAMQPFactory connected.", logLevel=logging.DEBUG)
         return prot
-
-
+    
