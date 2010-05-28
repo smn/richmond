@@ -80,6 +80,9 @@ class AMQPConsumer(object):
     def consume_data(self, message):
         log.msg("Received data: '%s' but doing nothing" % message.content.body, 
                                         logLevel=logging.DEBUG)
+        self.ack(message)
+    
+    def ack(self, message):
         self.channel.basic_ack(message.delivery_tag, True)
     
 

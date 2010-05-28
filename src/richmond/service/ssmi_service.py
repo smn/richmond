@@ -11,13 +11,17 @@ class RichmondSSMIProtocol(SSMIClient):
     Subclassing the protocol to avoid me having to
     work with callbacks to do authorization
     """
-    def __init__(self, username, password, handler_class):
-        self.callback = handler_class()
-        self._ussd_callback = self.callback.ussd_callback
-        self._sms_callback = self.callback.sms_callback
-        self._errback = self.callback.errback
-        self._username = username
-        self._password = password
+    def __init__(self, username, password):
+        self._username = username # these could probably be a 
+        self._password = password # callback instance var
+    
+    def set_handler(self, handler):
+        # set the variables needed by SSMIClient so I don't have to
+        # specify callbacks manually for each function
+        self.handler = handler
+        self._ussd_callback = self.handler.ussd_callback
+        self._sms_callback = self.handler.sms_callback
+        self._errback = self.handler.errback
         # ugh, can't do normal super() call because twisted's protocol.Factory
         # is an old style class that doesn't subclass object.
         SSMIClient.__init__(self)
@@ -66,12 +70,11 @@ class SSMICallback(object):
 class SSMIService(Service):
     implements(IServiceMaker)
     
-    def __init__(self, username, password, host, port, callback_class=SSMICallback):
+    def __init__(self, username, password, host, port):
         self.username = username
         self.password = password
         self.host = host
         self.port = port
-        self.callback_class = callback_class
         
         self.onConnectionMade = defer.Deferred()
         self.onConnectionLost = defer.Deferred()
@@ -80,7 +83,7 @@ class SSMIService(Service):
             raise RuntimeError, 'port should be an integer'
     
     def startService(self):
-        factory = RichmondSSMIFactory(self.username, self.password, self.callback_class)
+        factory = RichmondSSMIFactory(self.username, self.password)
         factory.onConnectionMade = self.onConnectionMade
         factory.onConnectionLost = self.onConnectionLost
         self.client_connection = reactor.connectTCP(self.host, self.port, factory)

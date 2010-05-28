@@ -88,9 +88,9 @@ class RichmondService(MultiService):
         
     
     @inlineCallbacks
-    def start_consumer(self, klass):
+    def create_consumer(self, klass, *args, **kwargs):
         self.ensure_amqp_service_is_ready()
-        consumer = klass()
+        consumer = klass(*args, **kwargs)
         consumer.set_amq_client(self.amqp_client)
         yield consumer.join_queue(exchange_name=consumer.exchange_name, 
                             exchange_type=consumer.exchange_type, 
@@ -100,9 +100,9 @@ class RichmondService(MultiService):
         returnValue(consumer)
     
     @inlineCallbacks
-    def start_publisher(self, klass):
+    def create_publisher(self, klass, *args, **kwargs):
         self.ensure_amqp_service_is_ready()
-        publisher = klass()
+        publisher = klass(*args, **kwargs)
         publisher.set_amq_client(self.amqp_client)
         yield publisher.publish_to(publisher.exchange_name,
                                     publisher.routing_key)
