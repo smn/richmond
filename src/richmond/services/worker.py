@@ -12,7 +12,7 @@ class Consumer(AMQPConsumer):
         self.ack(message)
     
 
-class WorkerService(RichmondService):
+class PubSubWorker(RichmondService):
     
     consumer_class = Consumer
     publisher_class = Publisher

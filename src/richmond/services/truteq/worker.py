@@ -1,8 +1,8 @@
-from richmond.services.truteq.base import WorkerPublisher, WorkerConsumer, SessionType
-from richmond.services.worker import WorkerService
+from richmond.services.truteq.base import Publisher, Consumer, SessionType
+from richmond.services.worker import PubSubWorker
 from twisted.python import log
 
-class EchoConsumer(WorkerConsumer):
+class EchoConsumer(Consumer):
     
     def new_ussd_session(self, msisdn, message):
         self.reply(msisdn, "Hello, this is an echo service for testing. "
@@ -23,7 +23,7 @@ class EchoConsumer(WorkerConsumer):
     
 
 
-class USSDWorker(WorkerService):
+class USSDWorker(PubSubWorker):
     consumer_class = EchoConsumer
-    publisher_class = WorkerPublisher
+    publisher_class = Publisher
     

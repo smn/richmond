@@ -1,18 +1,19 @@
 from twisted.python import log
-from richmond.services.worker import WorkerService, Publisher, Consumer
+from richmond.services import worker
+from ssmi import client
 
 class SessionType(object):
     """ussd_type's from SSMI documentation"""
-    new = "1"
-    existing = "2"
-    end = "3"
-    timeout = "4"
+    new = client.SSMI_USSD_TYPE_NEW
+    existing = client.SSMI_USSD_TYPE_EXISTING
+    end = client.SSMI_USSD_TYPE_END
+    timeout = client.SSMI_USSD_TYPE_TIMEOUT
 
-class WorkerPublisher(Publisher):
+class Publisher(worker.Publisher):
     exchange_name = 'richmond'
     routing_key = 'ussd.send'
 
-class WorkerConsumer(Consumer):
+class Consumer(worker.Consumer):
     exchange_name = 'richmond'
     exchange_type = 'direct'
     queue_name = 'richmond.ussd.receive'

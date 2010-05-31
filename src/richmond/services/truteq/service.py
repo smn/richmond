@@ -77,7 +77,6 @@ class USSDPublisher(AMQPPublisher):
     exchange_name = "richmond"
     routing_key = "ussd.receive"
 
-
 class USSDService(RichmondService):
     """
     For a USSD service we need both a publisher and a consumer. Individual
@@ -169,3 +168,4 @@ class USSDService(RichmondService):
     def stop(self):
         """Called when this service is stopping"""
         pass
+    
