@@ -1,7 +1,7 @@
 from richmond.services.base import RichmondService
 from richmond.services.truteq import ssmi_service
+from richmond.services.truteq.base import SessionType
 from richmond.amqp.base import AMQPConsumer, AMQPPublisher
-from richmond.workers.ussd import SessionType
 
 from twisted.python import log
 from twisted.python.log import logging
@@ -95,11 +95,12 @@ class USSDService(RichmondService):
         7. Services sends message over SSMI protocol to TruTeq.
     
     """
-    def start(self):
+    def start(self, **options):
         """
         Start is called by RichmondService when this it has connected
         to the AMQP backend and is ready for pub/sub madness
         """
+        self.options = options
         self.start_consumer()
     
     def start_consumer(self):
@@ -143,10 +144,14 @@ class USSDService(RichmondService):
         succesfully to the SSMI service then return the SSMIClient to 
         ssmi_service_ready
         """
-        self.ssmi_srv = ssmi_service.SSMIService('praekelttest2', 
-                                            'LIUMIOYTM',
-                                            'sms.truteq.com', 
-                                            50008)
+        
+        ssmi_args = {
+            'username': self.options.get('username'),
+            'password': self.options.get('password'),
+            'host': self.options.get('host'),
+            'port': int(self.options.get('port')),
+        }
+        self.ssmi_srv = ssmi_service.SSMIService(**ssmi_args)
         self.ssmi_srv.onConnectionMade.addCallback(self.ssmi_service_ready)
         self.ssmi_srv.onConnectionMade.addErrback(lambda f: f.raiseException())
         self.ssmi_srv.setServiceParent(self) # RichmondService is a MultiService,

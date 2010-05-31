@@ -1,3 +1,5 @@
+import ConfigParser
+
 from twisted.application.service import Service, MultiService
 from twisted.python import log
 from twisted.python.log import logging
@@ -22,7 +24,7 @@ class AMQPService(Service):
         self.username = options.get('username', self.username)
         self.password = options.get('password', self.password)
         self.host = options.get('host', self.host)
-        self.port = options.get('port', self.port)
+        self.port = int(options.get('port', self.port))
         self.vhost = options.get('vhost', self.vhost)
         self.spec = options.get('spec', self.spec)
         
@@ -60,19 +62,36 @@ class RichmondService(MultiService):
     A base Service class that we can subclass, should contain all the AMQP
     boilerplate
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, config_file, **kwargs):
         MultiService.__init__(self)
-        amqp_service = AMQPService(**kwargs)
+        # read the config file first
+        self.config_file = config_file
+        self.config = ConfigParser.ConfigParser()
+        self.config.readfp(open(config_file))
+        
+        amqp_options = self.get_config('amqp')
+        # filter out blank values
+        amqp_options = dict([(key,value) \
+                                for key, value in amqp_options.items() \
+                                if value])
+        amqp_service = AMQPService(**amqp_options)
         amqp_service.onConnectionMade.addCallback(self.on_connect)
         amqp_service.onConnectionLost.addCallback(self.on_disconnect)
         self.addService(amqp_service)
         self.amqp_client = None
     
+    def get_config(self, section):
+        if self.config.has_section(section):
+            return dict((option, self.config.get(section, option))
+                        for option in self.config.options(section))
+        else:
+            return {}
+    
     @inlineCallbacks
     def on_connect(self, client):
         log.msg("RichmondService connected %s" % client)
         self.amqp_client = client
-        yield self.start()
+        yield self.start(**self.get_config('service'))
         returnValue(client)
     
     @inlineCallbacks

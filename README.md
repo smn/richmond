@@ -1,7 +1,7 @@
 Richmond
 ========
 
-Connecting the python-ssmi client to AMQP to allow for backends to scale more easily. 
+PubSub platform for connecting online messaging services such as SMS and USSD to a horizontally scalable backend of workers.
 
 If you're wondering about the name. Apparently Richmond has is a great city for commuters, few traffic problems. Seemed like a good name for a high-traffic message bus application.
 
@@ -52,77 +52,87 @@ Running Richmond
 
 Richmond is implemented using a [Pub/Sub][pubsub] design using the [Competing Consumer pattern][competing consumers]. 
 
-Richmond has two plugins for Twisted, `richmond_broker` and `richmond_worker`.
+Richmond is started as a `richmond_service` plugin for Twisted.
 
-The broker connects to TruTeq's SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
+Every Richmond services connects to RabbitMQ and allows for both consuming and publishing of messages. Richmond allows for connecting incoming and outoing messages to a backend of workers.
 
-The worker reads all incoming JSON objects on the receive queue and publishes a response back to the send queue for the `richmond_worker` to publish over SSMI.
+Richmond currently has a TruTeq service that allows for receiving and sending of USSD messages over TruTeq's SSMI protocol. The TruTeq service connects to the SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
 
-Make sure you update the configuration file in `config/richmond-broker.cfg` and start the broker:
+The worker reads all incoming JSON objects on the receive queue and publishes a response back to the send queue for the TruTeq service to publish over SSMI.
+
+Make sure you update the configuration file in `config/truteq.cfg` and start the broker:
 
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.broker.pid -n \     
-        richmond_broker -c config/richmond-broker.cfg
+    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.service.pid -n \     
+        richmond_service \
+        --service=richmond.services.truteq.service.USSDService \
+        --config=config/truteq.cfg
     ...
  
-Make sure you update the worker configuration in `config/richmond-worker.cfg` if the defaults aren't suitable and start a worker.
-
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.worker.1.pid -n \
-        richmond_worker -w richmond.workers.ussd.EchoWorker
+    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.worker.1.pid -n \
+        richmond_service \
+        --service richmond.campaigns.vumi.VumiUSSDWorker \
+        --config=config/truteq.cfg
     ...
 
-The worker's -w option allows you to specify a class that subclasses `richmond.workers.base.RichmondWorker`.
+The worker's --service/-s option allows you to specify a class that subclasses `richmond.services.base.RichmondService`.
 
 Remove the `-n` option to have `twistd` run in the background. The `--pidfile` option isn't necessary, `twistd` will use 'twistd.pid' by default. However, since we could have multiple brokers and workers running at the same time on the same machine it is good to be explicit since `twistd` will assume an instance is already running if 'twistd.pid' already exists.
 
 Creating a custom worker
 ------------------------
 
-We'll create a worker that responds to USSD json objects. We'll subclass the `richmond.workers.ussd.USSDWorker` which itself subclasses `richmond.workers.base.RichmondWorker`. The `USSDWorker` subclasses `RichmondWorker`'s `consume` method and maps these to the following methods:
+We'll create a worker that responds to USSD json objects. We'll subclass the `richmond.services.worker.PubSubWorker`. Workers should always start a queue consumer and a queue publisher. For our example it should start a publisher for publishing outgoing USSD messages to the TruTeq service and it should start a consumer for receiving incoming USSD messages from the TruTeq service.
+
+A basic TruTeq consumer is provided and it provides the following functions.
+They're called for each of the relevant messages that arrive over the queue.
 
     * new_ussd_session(msisdn, message)
     * existing_ussd_session(msisdn, message)
     * timed_out_ussd_session(msisdn, message)
     * end_ussd_session(msisdn, message)
 
-The `USSDWorker` also provides a `reply(msisdn, message, type)` that publishes the message of the given type to the queue.
+This is what the code for a consumer for TruTeq would look like:
 
-Here's [working example][foobarworker]:
- 
-    from richmond.workers.ussd import USSDWorker, SessionType
+    from richmond.services.truteq.base import Publisher, Consumer, SessionType
+    from richmond.services.worker import PubSubWorker
     from twisted.python import log
- 
-    class FooBarWorker(USSDWorker):
- 
+
+    class EchoConsumer(Consumer):
+    
         def new_ussd_session(self, msisdn, message):
-            """Respond to new sessions"""
-            self.reply(msisdn, "foo?", SessionType.existing)
- 
+            self.reply(msisdn, "Hello, this is an echo service for " \
+                                "testing. Reply with whatever. Reply '0' " \
+                                "to end session.", 
+                                SessionType.existing)
+    
         def existing_ussd_session(self, msisdn, message):
-            """Respond to returning sessions"""
-            if message == "bar" or message == "0": # sorry android is silly
-                # replying with type `SessionType.end` ends the session
-                self.reply(msisdn, "Clever. Bye!", SessionType.end)
+            if message == "0":
+                self.reply(msisdn, "quitting, goodbye!", SessionType.end)
             else:
-                # replying with type `SessionType.existing` keeps the session
-                # open and prompts the user for input
-                self.reply(msisdn, "Say bar ...", SessionType.existing)
-	        
+                self.reply(msisdn, message, SessionType.existing)
+    
         def timed_out_ussd_session(self, msisdn, message):
-            """These timed out unfortunately"""
-            log.msg("%s timed out" % msisdn)
-	        
+            log.msg('%s timed out, removing client' % msisdn)
+    
         def end_ussd_session(self, msisdn, message):
-            """These ended the session themselves"""
-            log.msg("%s ended session" % msisdn)
-	    
+            log.msg('%s ended the session, removing client' % msisdn)
+    
+    
+    
+    class USSDWorker(PubSubWorker):
+        consumer_class = EchoConsumer
+        publisher_class = Publisher
+    
 
 Start the worker:
 
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.worker.2.pid -n \
-        richmond_worker -w richmond.workers.example.FooBarWorker
+    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.worker.2.pid -n \
+        richmond_service \
+        --service=richmond.campaigns.example.USSDWorker
+        --config=config/truteq.conf
     ...
 
 
@@ -379,5 +389,4 @@ For a complete listing of the command line options available, use the help comma
 [GitHub]: http://www.github.com/
 [pubsub]: http://en.wikipedia.org/wiki/Publish/subscribe
 [competing consumers]: http://www.eaipatterns.com/CompetingConsumers.html
-[foobarworker]: http://github.com/smn/richmond/blob/master/richmond/workers/example.py
 [celery]: http://ask.github.com/celery

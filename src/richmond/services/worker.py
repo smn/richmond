@@ -18,7 +18,8 @@ class PubSubWorker(RichmondService):
     publisher_class = Publisher
     
     @inlineCallbacks
-    def start(self):
+    def start(self, **options):
+        self.options = options
         publisher = yield self.create_publisher(self.publisher_class)
         consumer = yield self.create_consumer(self.consumer_class, publisher)
     
