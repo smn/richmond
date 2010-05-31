@@ -26,4 +26,3 @@ class EchoConsumer(Consumer):
 class USSDWorker(PubSubWorker):
     consumer_class = EchoConsumer
     publisher_class = Publisher
-    

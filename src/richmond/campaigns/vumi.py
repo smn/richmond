@@ -1,6 +1,6 @@
+from richmond.services.truteq.base import Publisher, Consumer, SessionType
+from richmond.services.worker import PubSubWorker
 from twisted.python import log
-
-from richmond.workers.ussd import USSDWorker, SessionType
 
 from alexandria.client import Client
 from alexandria.sessions.manager import SessionManager
@@ -33,8 +33,6 @@ class Backend(object):
         return state
     
 
-
-
 class StatefulClient(Client):
     
     def __init__(self, msisdn, reply_callback):
@@ -51,7 +49,7 @@ class StatefulClient(Client):
         self.reply_callback(self.id, message, reply_type)
     
 
-class VumiWorker(USSDWorker):
+class VumiConsumer(Consumer):
     
     menu = MenuSystem(
         prompt('What is your favorite programming language?', options=(
@@ -99,3 +97,7 @@ class VumiWorker(USSDWorker):
         log.msg("%s ended session" % msisdn)
         self.remove_client(msisdn)
     
+
+class VumiUSSDWorker(PubSubWorker):
+    consumer_class = VumiConsumer
+    publisher_class = Publisher
