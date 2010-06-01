@@ -1,7 +1,7 @@
 - fields:
     created_at: &timestamp !!timestamp '2009-05-14 12:41:37.166104'
     delivered_at: null
-    delivery_status: 0
+    transport_status: ''
     from_msisdn: '27123456789'
     message: hello world
     to_msisdn: '27123456789'

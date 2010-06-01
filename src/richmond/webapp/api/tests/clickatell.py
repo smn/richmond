@@ -1,8 +1,6 @@
 from django.test import TestCase
-from django.test.client import Client
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
-import base64
 from time import time
 from datetime import datetime, timedelta
 
@@ -23,8 +21,10 @@ class ClickatellSMSHandlerTestCase(TestCase):
         """
         Receipts received from clickatell should update the status
         """
-        [sms] = mock_sent_messages(self.user, count=1)
-        self.assertEquals(sms.delivery_status, 0)
+        [sms] = mock_sent_messages(self.user, count=1, 
+                                    transport_name = 'Clickatell',
+                                    transport_msg_id='a' * 32)
+        self.assertEquals(sms.transport_status, '')
         resp = self.client.post(reverse('api:clickatell:sms-receipt'), {
             'apiMsgId': 'a' * 32,
             'cliMsgId': sms.pk,
@@ -34,9 +34,9 @@ class ClickatellSMSHandlerTestCase(TestCase):
             'timestamp': int(time()),
             'charge': 0.3
         })
-        sms = SentSMS.objects.get(pk=sms.pk) # reload
-        self.assertEquals(sms.delivery_status, 8)
         self.assertEquals(resp.status_code, 201)
+        sms = SentSMS.objects.get(pk=sms.pk) # reload
+        self.assertEquals(sms.transport_status, '8')
     
     def test_sms_sending(self):
         self.assertEquals(SentSMS.objects.count(), 0)
@@ -83,7 +83,7 @@ class ClickatellSMSHandlerTestCase(TestCase):
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(ReceivedSMS.objects.count(), 1)
 
-class ClicaktellSentSMSStatusTestCase(TestCase):
+class ClickatellSentSMSStatusTestCase(TestCase):
     
     fixtures = ['user_set', 'sentsms_set']
     
@@ -130,7 +130,7 @@ class ClicaktellSentSMSStatusTestCase(TestCase):
         self.assertEquals(json_sms['to_msisdn'], sent_sms.to_msisdn)
         self.assertEquals(json_sms['from_msisdn'], sent_sms.from_msisdn)
         self.assertEquals(json_sms['message'], sent_sms.message)
-        self.assertEquals(json_sms['delivery_status'], sent_sms.delivery_status)
+        self.assertEquals(json_sms['transport_status'], sent_sms.transport_status)
         self.assertEquals(resp.status_code, 200)
     
     def test_multiple_statuses(self):

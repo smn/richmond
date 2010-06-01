@@ -63,11 +63,12 @@ class SentSMS(models.Model):
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)
     message = models.CharField(blank=False, max_length=160)
+    transport_name = models.CharField(blank=False, max_length=256)
+    transport_msg_id = models.CharField(blank=True, default='', max_length=256)
+    transport_status = models.CharField(blank=True, default='', max_length=256)
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
     delivered_at = models.DateTimeField(blank=True, null=True)
-    delivery_status = models.IntegerField(blank=True, null=True, default=0,
-                                        choices=CLICKATELL_MESSAGE_STATUSES)
     
     class Admin:
         list_display = ('',)

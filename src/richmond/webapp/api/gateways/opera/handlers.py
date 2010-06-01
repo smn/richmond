@@ -1,6 +1,9 @@
 import re, yaml, logging
 from datetime import datetime, timedelta
 
+from django.http import HttpResponse
+from django.utils import simplejson
+
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 from piston.utils import Mimer, FormValidationError
@@ -9,10 +12,9 @@ from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
 from richmond.webapp.api import forms
 from richmond.webapp.api import signals
 
-from alexandria.loader.base import YAMLLoader
-from alexandria.dsl.utils import dump_menu
-
 import pystache
+
+from utils import parse_receipts_xml, OPERA_TIMESTAMP_FORMAT
 
 def specify_fields(model, include=[], exclude=[]):
     """
@@ -27,30 +29,37 @@ def specify_fields(model, include=[], exclude=[]):
 class SMSReceiptHandler(BaseHandler):
     allowed_methods = ('POST',)
     
+    # TODO: Add Form validation for XML input
     @throttle(60, 60) # allow for 1 a second
-    @validate(forms.SMSReceiptForm)
     def create(self, request):
-        logging.debug('Got notified of a delivered SMS to: %s' % request.POST['to'])
-        try:
-            pk = int(request.POST['cliMsgId'])
-            transport_msg_id = request.POST['apiMsgId']
-            transport_status = request.POST['status']
-            timestamp = float(request.POST['timestamp'])
-            
-            sms = SentSMS.objects.get(id=pk, 
-                                        transport_name='Clickatell',
-                                        transport_msg_id=transport_msg_id)
-            sms.user = request.user
-            sms.transport_status = transport_status
-            sms.delivery_at = datetime.utcfromtimestamp(timestamp)
-            sms.save()
-            
-            signals.sms_receipt.send(sender=SentSMS, instance=sms, 
-                                        pk=sms.pk, receipt=request.POST.copy())
-            
-            return rc.CREATED
-        except SentSMS.DoesNotExist, e:
-            return rc.NOT_FOUND
+        receipts = parse_receipts_xml(request.raw_post_data)
+        success, fail = [], []
+        for receipt in receipts:
+            try:
+                # internally we store MSISDNs without a leading plus, strip that
+                # from the msisdn
+                sms = SentSMS.objects.get(
+                                        transport_name = "Opera",
+                                        transport_msg_id=receipt.reference, 
+                                        to_msisdn=receipt.msisdn.replace("+",""))
+                sms.transport_status = receipt.status
+                sms.delivery_timestamp = datetime.strptime(receipt.timestamp, 
+                                                        OPERA_TIMESTAMP_FORMAT)
+                sms.save()
+                
+                signals.sms_receipt.send(sender=SentSMS, instance=sms, 
+                                            pk=sms.pk, 
+                                            receipt=receipt._asdict())
+                success.append(receipt)
+            except SentSMS.DoesNotExist, error:
+                logging.error(error)
+                fail.append(receipt)
+                
+        
+        return HttpResponse(simplejson.dumps({
+            'success': map(lambda rcpt: rcpt._asdict(), success),
+            'fail': map(lambda rcpt: rcpt._asdict(), fail)
+        }), status=201, content_type='application/json; charset=utf-8')
     
 
 
@@ -62,7 +71,7 @@ class SendSMSHandler(BaseHandler):
     
     def _send_one(self, **kwargs):
         kwargs.update({
-            'transport_name': 'Clickatell'
+            'transport_name': 'Opera'
         })
         form = forms.SentSMSForm(kwargs)
         if not form.is_valid():
@@ -124,7 +133,7 @@ class SendTemplateSMSHandler(BaseHandler):
             'from_msisdn': from_msisdn,
             'message': template.render(context=context),
             'user': user_id,
-            'transport_name': 'Clickatell'
+            'transport_name': 'Opera'
         })
         if not form.is_valid():
             raise FormValidationError(form)

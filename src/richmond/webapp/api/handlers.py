@@ -14,6 +14,8 @@ Mimer.TYPES = {}
 # tries to wrap the loaded YAML data in a dict, which for our conversation 
 # YAML documents doesn't work.
 Mimer.register(yaml.safe_load, ('application/x-yaml',))
+# Do nothing with incoming XML, leave the parsing for the handler
+Mimer.register(lambda *a: None, ('text/xml','application/xml'))
 
 
 class ConversationHandler(BaseHandler):
