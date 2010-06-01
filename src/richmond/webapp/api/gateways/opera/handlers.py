@@ -208,6 +208,7 @@ class ReceiveSMSHandler(BaseHandler):
         # to other services in a callback chain.
         response = rc.ALL_OK
         response.content = request.raw_post_data
+        response['Content-Type'] = 'text/xml; charset=utf8'
         return response
     
 

@@ -170,10 +170,21 @@ Scheduling SMS for delivery via the API
 
 The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 60 hits per 60 seconds and require HTTP Basic Authentication.
 
+There are currently two transports available. [Clickatell][clickatell] or [Opera][opera]. The API for both is exactly the same, just replace '/clickatell/' for '/opera/' in the URL.
+
+Sending via Clickatell:
+
+    http://localhost:8000/api/v1/sms/clickatell/send.json
+
+Sending via Opera:
+
+    http://localhost:8000/api/v1/sms/opera/send.json
+
+
 **Sending SMSs**
 
     $ curl -u 'username:password' -X POST \
-    >   http://localhost:8000/api/v1/sms/send.json \
+    >   http://localhost:8000/api/v1/sms/clickatell/send.json \
     >   -d 'to_msisdn=27123456789' \
     >   -d 'from_msisdn=27123456789' \
     >   -d 'message=hello world'
@@ -193,7 +204,7 @@ The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 
 Sending multiple SMSs is as simple as sending a simple SMS. Just specify multiple values for `to_msisdn`.
 
     $ curl -u 'username:password' -X POST \
-    >   http://localhost:8000/api/v1/sms/send.json \
+    >   http://localhost:8000/api/v1/sms/clickatell/send.json \
     >   -d 'to_msisdn=27123456780' \
     >   -d 'to_msisdn=27123456781' \
     >   -d 'to_msisdn=27123456782' \
@@ -233,7 +244,7 @@ Personalized SMSs can be sent by specifying a template and the accompanying vari
 All template variables should be prefixed with 'template_'. In the template you can refer to the values without their prefix.
 
     $ curl -u 'username:password' -X POST \
-    > http://localhost:8000/api/v1/sms/template_send.json \
+    > http://localhost:8000/api/v1/sms/clickatell/template_send.json \
     > -d 'to_msisdn=27123456789' \
     > -d 'to_msisdn=27123456789' \
     > -d 'to_msisdn=27123456789' \
@@ -280,7 +291,7 @@ Once an SMS has been scheduled for sending you can check it's status via the API
 **Retrieving one specific SMS**
 
     $ curl -u 'username:password' -X GET \
-    > http://localhost:8000/api/v1/sms/status/1.json \
+    > http://localhost:8000/api/v1/sms/clickatell/status/1.json \
     {
         "delivered_at": null, 
         "created_at": "2010-05-14 16:31:01", 
@@ -296,7 +307,7 @@ Once an SMS has been scheduled for sending you can check it's status via the API
 **Retrieving SMSs sent since a specific date**
 
     $ curl -u 'username:password' -X GET \
-    > http://localhost:8000/api/v1/sms/status.json?since=2009-01-01
+    > http://localhost:8000/api/v1/sms/clickatell/status.json?since=2009-01-01
     [
         {
             "delivered_at": null, 
@@ -317,7 +328,7 @@ Once an SMS has been scheduled for sending you can check it's status via the API
 **Retrieving SMSs by specifying their IDs**
 
     $ curl -u 'username:password' -X GET \
-    > "http://localhost:8000/api/v1/sms/status.json?id=3&id=4"
+    > "http://localhost:8000/api/v1/sms/clickatell/status.json?id=3&id=4"
     [
         {
             "delivered_at": null, 
@@ -350,17 +361,17 @@ There are two types of callbacks defined. These are `sms_received` and `sms_rece
 
     $ curl -u 'username:password' -X PUT \
     > http://localhost:8000/api/v1/account/callbacks.json \
-    > -d 'sms_received=http://localhost/sms/received/callback' \
-    > -d 'sms_receipt=http://localhost/sms/receipt/callback'
+    > -d 'sms_received=http://localhost/sms/clickatell/received/callback' \
+    > -d 'sms_receipt=http://localhost/sms/clickatell/receipt/callback'
     [
         {
-            "url": "http://localhost/sms/received/callback", 
+            "url": "http://localhost/sms/clickatell/received/callback", 
             "created_at": "2010-05-14 16:50:13", 
             "name": "sms_received", 
             "updated_at": "2010-05-14 16:50:13"
         }, 
         {
-            "url": "http://localhost/sms/receipt/callback", 
+            "url": "http://localhost/sms/clickatell/receipt/callback", 
             "created_at": "2010-05-14 16:50:13", 
             "name": "sms_receipt", 
             "updated_at": "2010-05-14 16:50:13"
@@ -368,6 +379,36 @@ There are two types of callbacks defined. These are `sms_received` and `sms_rece
     ]
 
 The next time an SMS is received or a SMS receipt is delivered, Richmond will post the data to the URLs specified.
+
+Accepting delivery receipts from the transports
+-----------------------------------------------
+
+Both [Clickatell][clickatell] and [Opera][opera] support notification of an SMS being delivered. In the general configuration areas of both sites there is an option where a URL callback can be specified. Clickatell or Opera will then post the delivery report to that URL.
+
+Richmond will accept delivery reports from both:
+
+For [Clickatell][clickatell]:
+
+    http://localhost:8000/api/v1/sms/clickatell/receipt.json
+
+For [Opera][opera]:
+
+    http://localhost:8000/api/v1/sms/opera/receipt.json
+
+Accepting inbound SMS from the transports
+-----------------------------------------
+
+Like the SMS delivery reports, both [Opera][opera] and [Clickatell][clickatell] will forward incoming SMSs to Richmond. 
+
+For Clickatell the URL is:
+
+    http://localhost:8000/api/v1/sms/clickatell/receive.json
+
+For Opera the URL is:
+
+    http://localhost:8000/api/v1/sms/opera/receive.xml
+
+Note the XML suffix on the URL. The resource returns XML whereas Clickatell returns JSON. This is important! Opera can forward our response to further callbacks in their application and it needs to be formatted as XML for upstream callbacks to make sense of it.
 
 Webapp Workers
 --------------
@@ -390,3 +431,5 @@ For a complete listing of the command line options available, use the help comma
 [pubsub]: http://en.wikipedia.org/wiki/Publish/subscribe
 [competing consumers]: http://www.eaipatterns.com/CompetingConsumers.html
 [celery]: http://ask.github.com/celery
+[clickatell]: http://clickatell.com
+[opera]: http://operainteractive.co.za/

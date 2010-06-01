@@ -16,6 +16,6 @@ urlpatterns = patterns('',
     (r'^status\.json$', sms_send_resource, {}, 'sms-status-list'),
     (r'^status/(?P<sms_id>\d+)\.json$', sms_send_resource, {}, 'sms-status'),
     (r'^template_send\.json$', sms_template_send_resource, {}, 'sms-template-send'),
-    (r'^receive\.json$', sms_receive_resource, {}, 'sms-receive'),
+    (r'^receive\.xml$', sms_receive_resource, {}, 'sms-receive'),
 )
 
