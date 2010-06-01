@@ -82,14 +82,36 @@ class OperaSMSHandlerTestCase(TestCase):
     
     def test_sms_receiving(self):
         self.assertEquals(ReceivedSMS.objects.count(), 0)
-        resp = self.client.post(reverse('api:opera:sms-receive'), {
-            'to': '27123456789',
-            'from': '27123456789',
-            'moMsgId': 'a' * 12,
-            'api_id': 'b' * 12,
-            'text': 'hello world',
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S") # MySQL format
-        })
+        
+        # from https://dragon.sa.operatelecom.com/MEnable/Client/Extra/bspostevent-1_0_0.dtd
+        now = datetime.utcnow()
+        receive_sms_doc = """
+        <?xml version="1.0"?>
+        <!DOCTYPE bspostevent>
+        <bspostevent>
+            <field name="Text" type="string">hello world</field>
+            <field name="Prefix" type="string"></field>
+            <field name="Remote" type="string">+27123456789</field>
+            <field name="Local" type="string">+27123456789</field>
+            <field name="NewSubscriber" type="string"></field>
+            <field name="Now" type="date">%s</field>
+            <field name="RemoteNetwork" type="string">vodacom-za</field>
+            <field name="ServiceName" type="string">service name</field>
+            <field name="ClientName" type="string">client name</field>
+            <field name="Subscriber" type="string">+27123456789</field>
+        </bspostevent>
+        """ % now.strftime('%Y-%m-%d %H:%M:%S +0000')
+        resp = self.client.post(reverse('api:opera:sms-receive'), 
+                                    receive_sms_doc.strip(),
+                                    content_type='text/xml')
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(ReceivedSMS.objects.count(), 1)
+        sms = ReceivedSMS.objects.latest()
+        self.assertEquals(
+            sms.received_at.strftime('%Y-%m-%d %H:%M:%S +0000'), 
+            now.strftime('%Y-%m-%d %H:%M:%S +0000')
+        )
+        self.assertEquals(sms.from_msisdn, '+27123456789')
+        self.assertEquals(sms.to_msisdn, '+27123456789')
+        self.assertEquals(sms.transport_name, 'Opera')
 

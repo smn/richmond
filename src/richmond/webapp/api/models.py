@@ -62,6 +62,7 @@ class SentSMS(models.Model):
     user = models.ForeignKey(User)
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)
+    charset = models.CharField(blank=True, default='utf8', max_length=32)
     message = models.CharField(blank=False, max_length=160)
     transport_name = models.CharField(blank=False, max_length=256)
     transport_msg_id = models.CharField(blank=True, default='', max_length=256)
@@ -87,14 +88,13 @@ class SentSMS(models.Model):
 
 class ReceivedSMS(models.Model):
     user = models.ForeignKey(User)
-    api_id = models.CharField(max_length=32)
-    moMsgId = models.CharField(max_length=32)
-    _from = models.CharField(max_length=32)
-    to = models.CharField(max_length=32)
-    timestamp = models.DateTimeField()
-    charset = models.CharField(blank=True, null=True, max_length=32)
-    udh = models.CharField(blank=True, null=True, max_length=255)
-    text = models.CharField(max_length=160)
+    to_msisdn = models.CharField(max_length=32)
+    from_msisdn = models.CharField(max_length=32)
+    charset = models.CharField(blank=True, default='utf8', max_length=32)
+    message = models.CharField(max_length=160)
+    transport_name = models.CharField(blank=False, max_length=255)
+    transport_msg_id = models.CharField(blank=True, default='', max_length=255)
+    received_at = models.DateTimeField(blank=False)
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
     
@@ -104,22 +104,19 @@ class ReceivedSMS(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        get_latest_by = ['created_at']
+        get_latest_by = 'created_at'
     
     def as_dict(self):
         """Return variables ready made for a URL callback"""
-        _dict = model_to_dict(self, exclude='_from')
-        _dict.update({'from': str(self._from)})
-        return _dict
+        return model_to_dict(self)
     
     def as_tuples(self):
-        """Return variables ready made for a URL callback"""
-        tuples = model_to_tuples(self, exclude='_from')
-        return tuples + (('from', str(self._from)),)
+        return model_to_tuples(self)
     
     def __unicode__(self):
-        return u"ReceivedSMS %s -> %s @ %s" % (self._from, self.to, 
-                                                self.timestamp)
+        return u"ReceivedSMS %s -> %s @ %s" % (self.from_msisdn, 
+                                                self.to_msisdn, 
+                                                self.received_at)
 
 
 class Profile(models.Model):

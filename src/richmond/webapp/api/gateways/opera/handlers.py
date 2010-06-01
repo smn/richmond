@@ -13,8 +13,9 @@ from richmond.webapp.api import forms
 from richmond.webapp.api import signals
 
 import pystache
+import iso8601
 
-from utils import parse_receipts_xml, OPERA_TIMESTAMP_FORMAT
+from utils import parse_receipts_xml, parse_post_event_xml, OPERA_TIMESTAMP_FORMAT
 
 def specify_fields(model, include=[], exclude=[]):
     """
@@ -31,6 +32,7 @@ class SMSReceiptHandler(BaseHandler):
     
     # TODO: Add Form validation for XML input
     @throttle(60, 60) # allow for 1 a second
+    @require_mime('xml')
     def create(self, request):
         receipts = parse_receipts_xml(request.raw_post_data)
         success, fail = [], []
@@ -179,25 +181,34 @@ class ReceiveSMSHandler(BaseHandler):
     exclude = ('user',)
     
     @throttle(60, 60)
+    @require_mime('xml')
     def create(self, request):
+        sms = parse_post_event_xml(request.raw_post_data)
         # update the POST to have the `_from` key copied from `from`. 
         # The model has `_from` defined because `from` is a protected python
         # statement
-        data = request.POST.copy()
-        data.update({
-            '_from': data['from'],
-            'user': request.user.pk
+        d = iso8601.parse_date(sms['Now'])
+        form = forms.ReceivedSMSForm({
+            'user': request.user.pk,
+            'to_msisdn': sms['Local'],
+            'from_msisdn': sms['Remote'],
+            'message': sms['Text'],
+            'transport_name': 'Opera',
+            'received_at': iso8601.parse_date(sms['Now'])
         })
-        del data['from']
-        form = forms.ReceivedSMSForm(data)
         if not form.is_valid():
             raise FormValidationError(form)
         
         receive_sms = form.save()
-        logging.debug('Receiving an SMS from: %s' % receive_sms._from)
+        logging.debug('Receiving an SMS from: %s' % receive_sms.from_msisdn)
         signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms, 
                                     pk=receive_sms.pk)
-        return receive_sms
+        
+        # return the response we got back to Opera, it could be re-routed
+        # to other services in a callback chain.
+        response = rc.ALL_OK
+        response.content = request.raw_post_data
+        return response
     
 
 

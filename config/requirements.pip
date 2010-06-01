@@ -1,6 +1,6 @@
 zope.interface
 carrot==0.10.4
-celery==1.0.3
+celery==1.0.5
 twisted==10.0.0
 txamqp==0.3
 Django==1.2
@@ -11,6 +11,7 @@ pycurl==7.18.1
 decorator==3.1.2
 pystache==0.3.1
 django-piston==0.2.2
+iso8601==0.1.4
 -e git+ssh://git@github.com/praekelt/python-ssmi.git#egg=python-ssmi
 -e git+git://github.com/smn/bellville.git#egg=smn-bellville
 -e git+git://github.com/smn/alexandria.git#egg=smn-alexandria

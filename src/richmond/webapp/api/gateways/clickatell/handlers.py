@@ -171,21 +171,21 @@ class ReceiveSMSHandler(BaseHandler):
     
     @throttle(60, 60)
     def create(self, request):
-        # update the POST to have the `_from` key copied from `from`. 
-        # The model has `_from` defined because `from` is a protected python
-        # statement
-        data = request.POST.copy()
-        data.update({
-            '_from': data['from'],
-            'user': request.user.pk
+        form = forms.ReceivedSMSForm({
+            'user': request.user.pk,
+            'to_msisdn': request.POST.get('to'),
+            'from_msisdn': request.POST.get('from'),
+            'message': request.POST.get('text'),
+            'transport_name': 'Clickatell',
+            'transport_msg_id': request.POST.get('api_id'),
+            'received_at': datetime.strptime(request.POST.get('timestamp'), 
+                                                "%Y-%m-%d %H:%M:%S")
         })
-        del data['from']
-        form = forms.ReceivedSMSForm(data)
         if not form.is_valid():
             raise FormValidationError(form)
         
         receive_sms = form.save()
-        logging.debug('Receiving an SMS from: %s' % receive_sms._from)
+        logging.debug('Receiving an SMS from: %s' % receive_sms.from_msisdn)
         signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms, 
                                     pk=receive_sms.pk)
         return receive_sms
