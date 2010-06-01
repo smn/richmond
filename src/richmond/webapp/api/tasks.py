@@ -8,12 +8,14 @@ from richmond.webapp.api.utils import callback
 from clickatell.api import Clickatell
 from clickatell.response import OKResponse, ERRResponse
 
+# simple wrapper for Opera's XML-RPC service
+from richmond.webapp.api.gateways.opera.backend import Opera
+
 class SendSMSTask(Task):
     routing_key = 'richmond.webapp.sms.send'
     
-    def run(self, pk):
-        send_sms = SentSMS.objects.get(pk=pk)
-        logger = self.get_logger(pk=pk)
+    def send_sms_with_clickatell(self, send_sms):
+        logger = self.get_logger(pk=send_sms.pk)
         clickatell = Clickatell(settings.CLICKATELL_USERNAME,
                                 settings.CLICKATELL_PASSWORD, 
                                 settings.CLICKATELL_API_ID,
@@ -24,11 +26,45 @@ class SendSMSTask(Task):
                             climsgid=send_sms.pk)
         logger.debug("Clickatell delivery: %s" % resp)
         if isinstance(resp, OKResponse):
+            send_sms.transport_msg_id = resp.value
+            send_sms.save()
             return resp
         else:
             logger.debug("Retrying...")
-            self.retry(args=[pk], kwargs={})
+            self.retry(args=[send_sms.pk], kwargs={})
 
+    def send_sms_with_opera(self, send_sms):
+        logger = self.get_logger(pk=send_sms.pk)
+        opera = Opera(service_id=settings.OPERA_SERVICE_ID, 
+                        password=settings.OPERA_PASSWORD,
+                        channel=settings.OPERA_CHANNEL,
+                        verbose=settings.DEBUG)
+        [result] = opera.send_sms(
+            msisdns=[send_sms.to_msisdn], 
+            smstexts=[send_sms.message])
+        send_sms.transport_msg_id = result['identifier']
+        send_sms.save()
+        return result
+    
+    def run(self, pk):
+        """
+        FIXME:  preferably we'd have different queues for different transports.
+                This isn't currently the case, if one transport is faster
+                than the other this setup could slow down the fast one because 
+                they're delayed by SMSs going to the slow transport.
+        """
+        send_sms = SentSMS.objects.get(pk=pk)
+        dispatch = {
+            'clickatell': self.send_sms_with_clickatell,
+            'opera': self.send_sms_with_opera
+        }
+        dispatcher = dispatch.get(send_sms.transport_name.lower())
+        if dispatcher:
+            return dispatcher(send_sms)
+        else:
+            logger = self.get_logger(pk=send_sms.pk)
+            logger.error('No dispatchers available for transport %s' 
+                            % send_sms.transport_name)
 
 class ReceiveSMSTask(Task):
     routing_key = 'richmond.webapp.sms.receive'

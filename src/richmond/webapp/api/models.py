@@ -80,9 +80,10 @@ class SentSMS(models.Model):
         get_latest_by = 'created_at'
     
     def __unicode__(self):
-        return u"SentSMS %s -> %s, %s @ %s" % (self.from_msisdn, 
+        return u"SentSMS %s -> %s, %s:%s @ %s" % (self.from_msisdn, 
                                             self.to_msisdn, 
-                                            self.get_delivery_status_display(), 
+                                            self.transport_name,
+                                            self.transport_status, 
                                             self.delivered_at)
 
 
@@ -169,12 +170,3 @@ admin.site.register(ReceivedSMS)
 admin.site.register(Profile)
 admin.site.register(URLCallback)
 
-from django.db.models.signals import post_save
-from richmond.webapp.api import signals
-from richmond.webapp.api.signals import sms_scheduled, sms_received, sms_receipt
-
-sms_scheduled.connect(signals.sms_scheduled_handler, sender=SentSMS, weak=False)
-sms_received.connect(signals.sms_received_handler, sender=ReceivedSMS, weak=False)
-sms_receipt.connect(signals.sms_receipt_handler, sender=SentSMS, weak=False)
-
-post_save.connect(signals.create_profile_handler, sender=User)

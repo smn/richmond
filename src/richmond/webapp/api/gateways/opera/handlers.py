@@ -79,7 +79,7 @@ class SendSMSHandler(BaseHandler):
         if not form.is_valid():
             raise FormValidationError(form)
         send_sms = form.save()
-        logging.debug('Scheduling an SMS to: %s' % kwargs['to_msisdn'])
+        logging.debug('Scheduling an SMS to: %s' % send_sms.to_msisdn)
         signals.sms_scheduled.send(sender=SentSMS, instance=send_sms,
                                     pk=send_sms.pk)
         return send_sms
