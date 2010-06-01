@@ -194,7 +194,7 @@ Sending via Opera:
             "id": 5, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456789", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "hello world"
         }
     ]
@@ -216,7 +216,7 @@ Sending multiple SMSs is as simple as sending a simple SMS. Just specify multipl
             "id": 2, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456780", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "hello world"
         }, 
         {
@@ -224,7 +224,7 @@ Sending multiple SMSs is as simple as sending a simple SMS. Just specify multipl
             "id": 3, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456781", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "hello world"
         }, 
         {
@@ -232,7 +232,7 @@ Sending multiple SMSs is as simple as sending a simple SMS. Just specify multipl
             "id": 4, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456782", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "hello world"
         }
     ]
@@ -262,7 +262,7 @@ All template variables should be prefixed with 'template_'. In the template you 
             "id": 6, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456789", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "Hello Foo Bar"
         }, 
         {
@@ -270,7 +270,7 @@ All template variables should be prefixed with 'template_'. In the template you 
             "id": 7, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456789", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "Hello Jack Jill"
         }, 
         {
@@ -278,7 +278,7 @@ All template variables should be prefixed with 'template_'. In the template you 
             "id": 8, 
             "from_msisdn": "27123456789", 
             "to_msisdn": "27123456789", 
-            "delivery_status": 0, 
+            "transport_status": 0, 
             "message": "Hello Simon de Haan"
         }
     ]
@@ -296,12 +296,12 @@ Once an SMS has been scheduled for sending you can check it's status via the API
         "delivered_at": null, 
         "created_at": "2010-05-14 16:31:01", 
         "updated_at": "2010-05-14 16:31:01", 
-        "delivery_status_display": "Pending locally", 
+        "transport_status_display": "", 
         "from_msisdn": "27123456789", 
         "id": 1, 
         "to_msisdn": "27123456789", 
         "message": "testing api", 
-        "delivery_status": 0
+        "transport_status": 0
     }
 
 **Retrieving SMSs sent since a specific date**
@@ -313,12 +313,12 @@ Once an SMS has been scheduled for sending you can check it's status via the API
             "delivered_at": null, 
             "created_at": "2010-05-14 16:31:01", 
             "updated_at": "2010-05-14 16:31:01", 
-            "delivery_status_display": "Pending locally", 
+            "transport_status_display": "", 
             "from_msisdn": "27123456789", 
             "id": 51, 
             "to_msisdn": "27123456789", 
             "message": "testing api", 
-            "delivery_status": 0
+            "transport_status": 0
         }, 
         ...
         ...
@@ -334,23 +334,23 @@ Once an SMS has been scheduled for sending you can check it's status via the API
             "delivered_at": null, 
             "created_at": "2010-05-14 16:31:01", 
             "updated_at": "2010-05-14 16:31:01", 
-            "delivery_status_display": "Pending locally", 
+            "transport_status_display": "", 
             "from_msisdn": "27123456789", 
             "id": 4, 
             "to_msisdn": "27123456789", 
             "message": "testing api", 
-            "delivery_status": 0
+            "transport_status": 0
         }, 
         {
             "delivered_at": null, 
             "created_at": "2010-05-14 16:31:01", 
             "updated_at": "2010-05-14 16:31:01", 
-            "delivery_status_display": "Pending locally", 
+            "transport_status_display": "", 
             "from_msisdn": "27123456789", 
             "id": 3, 
             "to_msisdn": "27123456789", 
             "message": "testing api", 
-            "delivery_status": 0
+            "transport_status": 0
         }
     ]
     
