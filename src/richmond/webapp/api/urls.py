@@ -20,5 +20,7 @@ urlpatterns += patterns('',
     (r'^sms/clickatell/', 
         include('richmond.webapp.api.gateways.clickatell.urls', 
                     namespace='clickatell')),
-    # (r'^sms/opera/', include('richmond.webapp.api.opera.urls', namespace='opera')),
+    (r'^sms/opera/', 
+        include('richmond.webapp.api.gateways.opera.urls', 
+                    namespace='opera')),
 )

@@ -7,9 +7,9 @@ from time import time
 from datetime import datetime, timedelta
 
 from richmond.webapp.api.models import *
-from richmond.webapp.api.tests import APIClient, mock_sent_messages
+from richmond.webapp.api.tests.utils import APIClient, mock_sent_messages
 
-class ApiHandlerTestCase(TestCase):
+class ClickatellSMSHandlerTestCase(TestCase):
     
     fixtures = ['user_set']
     
@@ -83,7 +83,7 @@ class ApiHandlerTestCase(TestCase):
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(ReceivedSMS.objects.count(), 1)
 
-class SentSMSStatusTestCase(TestCase):
+class ClicaktellSentSMSStatusTestCase(TestCase):
     
     fixtures = ['user_set', 'sentsms_set']
     
