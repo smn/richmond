@@ -108,7 +108,8 @@ else:
 CELERY_QUEUES = {
     "default": {
         "exchange": "richmond",
-        "binding_key": "richmond.webapp"},
+        "binding_key": "richmond.webapp",
+    },
     "sms_send": {
         "exchange": "richmond",
         "binding_key": "richmond.webapp.sms.send",

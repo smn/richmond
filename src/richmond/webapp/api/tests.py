@@ -76,7 +76,7 @@ class ApiHandlerTestCase(TestCase):
         """
         [sms] = mock_sent_messages(self.user, count=1)
         self.assertEquals(sms.delivery_status, 0)
-        resp = self.client.post(reverse('api:sms-receipt'), {
+        resp = self.client.post(reverse('api:clickatell:sms-receipt'), {
             'apiMsgId': 'a' * 32,
             'cliMsgId': sms.pk,
             'status': 8, # OK
@@ -91,7 +91,7 @@ class ApiHandlerTestCase(TestCase):
     
     def test_sms_sending(self):
         self.assertEquals(SentSMS.objects.count(), 0)
-        resp = self.client.post(reverse('api:sms-send'), {
+        resp = self.client.post(reverse('api:clickatell:sms-send'), {
             'to_msisdn': '27123456789',
             'from_msisdn': '27123456789',
             'message': 'yebo',
@@ -101,7 +101,7 @@ class ApiHandlerTestCase(TestCase):
     
     def test_batch_sms_sending(self):
         self.assertEquals(SentSMS.objects.count(), 0)
-        resp = self.client.post(reverse('api:sms-send'), {
+        resp = self.client.post(reverse('api:clickatell:sms-send'), {
             'to_msisdn': ['27123456780','27123456781','27123456782'],
             'from_msisdn': '27123456789',
             'message': 'yebo'
@@ -111,7 +111,7 @@ class ApiHandlerTestCase(TestCase):
     
     def test_template_sms_sending(self):
         self.assertEquals(SentSMS.objects.count(), 0)
-        resp = self.client.post(reverse('api:sms-template-send'), {
+        resp = self.client.post(reverse('api:clickatell:sms-template-send'), {
             'to_msisdn': ['27123456780','27123456781','27123456782'],
             'template_first_name': ['Name 1', 'Name 2', 'Name 3'],
             'template_last_name': ['Surname 1', 'Surname 2', 'Surname 3'],
@@ -123,7 +123,7 @@ class ApiHandlerTestCase(TestCase):
     
     def test_sms_receiving(self):
         self.assertEquals(ReceivedSMS.objects.count(), 0)
-        resp = self.client.post(reverse('api:sms-receive'), {
+        resp = self.client.post(reverse('api:clickatell:sms-receive'), {
             'to': '27123456789',
             'from': '27123456789',
             'moMsgId': 'a' * 12,
@@ -158,7 +158,7 @@ class SentSMSStatusTestCase(TestCase):
         """
         january_2009 = datetime(2009,01,01,0,0,0)
         new_smss = mock_sent_messages(self.user, count=50)
-        resp = self.client.get(reverse('api:sms-status-list'), {
+        resp = self.client.get(reverse('api:clickatell:sms-status-list'), {
             'since': january_2009
         })
         from django.utils import simplejson
@@ -173,7 +173,7 @@ class SentSMSStatusTestCase(TestCase):
     
     def test_single_status(self):
         sent_sms = SentSMS.objects.latest('created_at')
-        resp = self.client.get(reverse('api:sms-status', kwargs={
+        resp = self.client.get(reverse('api:clickatell:sms-status', kwargs={
             "sms_id": sent_sms.pk
         }))
         from django.utils import simplejson
@@ -188,7 +188,7 @@ class SentSMSStatusTestCase(TestCase):
         smss = mock_sent_messages(self.user, count=10)
         sms_ids = map(lambda sms: int(sms.pk), smss)
         sms_ids.sort()
-        resp = self.client.get(reverse('api:sms-status-list'), {
+        resp = self.client.get(reverse('api:clickatell:sms-status-list'), {
             'id': sms_ids
         })
         from django.utils import simplejson
@@ -220,7 +220,7 @@ class URLCallbackTestCase(TestCase):
         })
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(URLCallback.objects.count(), 2)
-        resp = self.client.post(reverse('api:sms-receive'), {
+        resp = self.client.post(reverse('api:clickatell:sms-receive'), {
             'to': '27123456789',
             'from': '27123456789',
             'moMsgId': 'a' * 12,
