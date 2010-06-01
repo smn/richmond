@@ -85,7 +85,7 @@ class ClickatellSMSHandlerTestCase(TestCase):
 
 class ClickatellSentSMSStatusTestCase(TestCase):
     
-    fixtures = ['user_set', 'sentsms_set']
+    fixtures = ['user_set', 'clickatell_sentsms_set']
     
     def setUp(self):
         self.client = APIClient()
