@@ -1,16 +1,3 @@
-"""
-1. create directory layout
-2. check of we have a repo
-    yes? -> pull in latest updates
-    no? -> clone
-4. deploy
-    1. pull in latest repo updates from branch
-    2. copy latest revision to release dir
-    3. checkout given commit
-5. restart
-    1. 
-
-"""
 from __future__ import with_statement
 from fabric.api import *
 from fabric.contrib.console import confirm
