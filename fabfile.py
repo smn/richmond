@@ -26,12 +26,10 @@ env.hosts = ['ubuntu-server.local']
 
 def setup_env(fn):
     def wrapper(branch, *args, **kwargs):
-        require('hosts')
-        setup_env_for(branch)
-        require('layout', provided_by=['setup_env_for'])
-        system.create_dirs(env.layout)
+        layout_directories(branch)
         return fn(branch, *args, **kwargs)
     return wrapper
+
 
 def setup_env_for(branch):
     env.branch = branch
@@ -39,17 +37,19 @@ def setup_env_for(branch):
     env.github_repo_name = 'richmond'
     env.github_repo = 'http://github.com/%(github_user)s/%(github_repo_name)s.git' % env
     
-    env.deploy_to = '/var/praekelt/vumi/%(branch)s' % env
+    env.deploy_to = '/var/praekelt/richmond/%(branch)s' % env
     env.releases_path = "%(deploy_to)s/releases" % env
     env.current = "%(deploy_to)s/current" % env
     env.shared_path = "%(deploy_to)s/shared" % env
     env.tmp_path = "%(shared_path)s/tmp" % env
+    env.pip_cache_path = "%(tmp_path)s/cache/pip" % env
     env.pids_path = "%(tmp_path)s/pids" % env
     env.logs_path = "%(shared_path)s/logs" % env
     env.repo_path = "%(shared_path)s/repositories" % env
     env.layout = [
         env.releases_path,
         env.tmp_path,
+        env.pip_cache_path,
         env.pids_path,
         env.logs_path,
         env.repo_path
@@ -61,6 +61,12 @@ def repo_path(repo_name):
 def repo(repo_name):
     """helper to quickly switch to a repository"""
     return cd(repo_path(repo_name))
+
+def layout_directories(branch):
+    require('hosts')
+    setup_env_for(branch)
+    require('layout', provided_by=['setup_env_for'])
+    system.create_dirs(env.layout)
 
 @setup_env
 def deploy(branch):
@@ -80,16 +86,16 @@ def deploy(branch):
             git.pull(branch)
     # 20100603_125848
     new_release_name = datetime.utcnow().strftime(RELEASE_NAME_FORMAT)
-    # /var/praekelt/vumi/staging/releases/20100603_125848
+    # /var/praekelt/richmond/staging/releases/20100603_125848
     new_release_path = join(env.releases_path, new_release_name)
-    # /var/praekelt/vumi/staging/releases/20100603_125848/richmond
+    # /var/praekelt/richmond/staging/releases/20100603_125848/richmond
     # Django needs the project name as it's parent dir since that is 
     # automagically appended to the loadpath
     new_release_repo = join(new_release_path, env.github_repo_name)
     
     system.create_dir(new_release_path)
     system.copy_dirs(repo_path(env.github_repo_name), new_release_path)
-    setup_virtual_env(new_release_path)
+    setup_virtualenv(branch)
     # ensure we're deploying the exact revision as we locally have
     base.set_current(new_release_name)
 
@@ -106,7 +112,7 @@ def setup_virtualenv(branch):
         return run(" && ".join([
             "virtualenv --no-site-packages ve",
             "source ve/bin/activate",
-            "pip -E ve install -r config/requirements.pip" % env,
+            "pip -E ve install --download-cache=%(pip_cache_path)s -r config/requirements.pip" % env,
             "python setup.py install",
         ]))
 
