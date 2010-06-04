@@ -38,6 +38,11 @@ Next it'll call `fab setup_virtualenv:staging` to setup the virtualenv in the la
 
 Next the latest release will be symlinked to `staging/current`. Nginx will point to whatever app is running inside `current`.
 
+After this you'll probably want to setup the database. In my case I'm using psyopg2 and it's not in the requirements file, I'll have to install that manually too.
+
+    (ve) $ fab execute:staging,"pip -E ve install pyscopg2"
+    (ve) $ fab execute:staging,"./manage.py syncdb"
+
 If you'd want to deploy some minor code change then use `fab update:staging`, that'll pull in the latest changes. Remember to restart the webapp for the changes in the code to be picked up.
 
 Starting, restarting & stopping the webapp
