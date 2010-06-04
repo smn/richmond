@@ -23,3 +23,9 @@ def symlink(dest1, dest2, force=True):
 def list_dirs(path):
     return run("ls -x %s" % path).split()
 
+def remove(filename, recursive_force=False):
+    return run("rm %(force)s %(filename)s" % {
+        'filename': filename,
+        'force': '-rf' if recursive_force else ''
+    })
+

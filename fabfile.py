@@ -3,7 +3,7 @@ from fabric.api import *
 from fabric.contrib.console import confirm
 from fabric.contrib.files import exists
 from datetime import datetime
-from os.path import join
+from os.path import join as _join
 
 from deploy import git, system, base, twistd
 
@@ -11,14 +11,18 @@ RELEASE_NAME_FORMAT = '%Y%m%d_%H%M%S' # timestamped
 # default for now
 env.hosts = ['ubuntu-server.local']
 
-def setup_env(fn):
+def _setup_env(fn):
     def wrapper(branch, *args, **kwargs):
-        layout_directories(branch)
+        layout(branch)
         return fn(branch, *args, **kwargs)
+    wrapper.func_name = fn.func_name
+    wrapper.func_doc = (fn.func_doc or '') + \
+                                        "Requires the branch from which you " \
+                                        "want to deploy as an argument."
     return wrapper
 
 
-def setup_env_for(branch):
+def _setup_env_for(branch):
     env.branch = branch
     env.github_user = 'smn'
     env.github_repo_name = 'richmond'
@@ -42,30 +46,50 @@ def setup_env_for(branch):
         env.repo_path
     ]
 
-def repo_path(repo_name):
+def _repo_path(repo_name):
     return '%(repo_path)s/%(github_repo_name)s' % env
 
-def repo(repo_name):
+def _repo(repo_name):
     """helper to quickly switch to a repository"""
-    return cd(repo_path(repo_name))
+    return cd(_repo_path(repo_name))
 
-def layout_directories(branch):
+def layout(branch):
+    """
+    Create a file system directory layout for deploying to.
+    """
     require('hosts')
-    setup_env_for(branch)
-    require('layout', provided_by=['setup_env_for'])
+    _setup_env_for(branch)
+    require('layout', provided_by=['_setup_env_for'])
     system.create_dirs(env.layout)
 
-@setup_env
+@_setup_env
 def deploy(branch):
-    if not git.is_repository(repo_path(env.github_repo_name)):
+    """
+    Deploy the application in a timestamped release folder.
+    
+        $ fab deploy:staging
+    
+    Internally this does the following:
+    
+        * `git pull` if a cached repository already exists
+        * `git clone` if it's the first deploy ever
+        * Checkout the current selected branch
+        * Create a new timestamped release directory
+        * Copy the cached repository to the new release directory
+        * Setup the virtualenv
+        * Install PIP's requirements, downloading new ones if not already cached
+        * Symlink `<branch>/current` to `<branch>/releases/<timestamped release directory>`
+    
+    """
+    if not git.is_repository(_repo_path(env.github_repo_name)):
         # repository doesn't exist, do a fresh clone
         with cd(env.repo_path):
             git.clone(env.github_repo, env.github_repo_name)
-        with repo(env.github_repo_name):
+        with _repo(env.github_repo_name):
             git.checkout(branch)
     else:
         # repository exists
-        with repo(env.github_repo_name):
+        with _repo(env.github_repo_name):
             if not (branch == git.current_branch()):
                 # switch to our branch if not already
                 git.checkout(branch)
@@ -74,28 +98,53 @@ def deploy(branch):
     # 20100603_125848
     new_release_name = datetime.utcnow().strftime(RELEASE_NAME_FORMAT)
     # /var/praekelt/richmond/staging/releases/20100603_125848
-    new_release_path = join(env.releases_path, new_release_name)
+    new_release_path = _join(env.releases_path, new_release_name)
     # /var/praekelt/richmond/staging/releases/20100603_125848/richmond
     # Django needs the project name as it's parent dir since that is 
     # automagically appended to the loadpath
-    new_release_repo = join(new_release_path, env.github_repo_name)
+    new_release_repo = _join(new_release_path, env.github_repo_name)
     
     system.create_dir(new_release_path)
-    system.copy_dirs(repo_path(env.github_repo_name), new_release_path)
-    setup_virtualenv(branch)
+    system.copy_dirs(_repo_path(env.github_repo_name), new_release_path)
+    
+    symlink_shared_dirs = ['logs', 'tmp']
+    for dirname in symlink_shared_dirs:
+        with cd(new_release_repo):
+            system.remove(dirname, recursive_force=True)
+            system.symlink(_join(env.shared_path, dirname), dirname)
+    
+    # create_virtualenv(branch)
     # ensure we're deploying the exact revision as we locally have
     base.set_current(new_release_name)
 
 
-@setup_env
+@_setup_env
 def execute(branch, command, release=None):
+    """
+    Execute a shell command in the virtualenv
+    
+        $ fab execute:staging,"./manage.py syncdb"
+    
+    If no release is specified it defaults to the latest release.
+    
+    """
     release = release or base.current_release()
-    directory = join(env.releases_path, release, env.github_repo_name)
-    virtualenv(directory, command)
+    directory = _join(env.releases_path, release, env.github_repo_name)
+    _virtualenv(directory, command)
 
-@setup_env
-def setup_virtualenv(branch):
-    with cd(join(base.current_release_path(), env.github_repo_name)):
+@_setup_env
+def create_virtualenv(branch, release=None):
+    """
+    Create the virtualenv and install the PIP requirements
+    
+        $ fab create_virtualenv:staging
+    
+    If no release is specified it defaults to the latest release
+    
+    """
+    release = release or base.current_release()
+    directory = _join(env.releases_path, release, env.github_repo_name)
+    with cd(directory):
         return run(" && ".join([
             "virtualenv --no-site-packages ve",
             "source ve/bin/activate",
@@ -104,46 +153,68 @@ def setup_virtualenv(branch):
         ]))
 
 
-def virtualenv(directory, command, env_name='ve'):
+def _virtualenv(directory, command, env_name='ve'):
     activate = 'source %s/bin/activate' % env_name
     deactivate = 'deactivate'
     with cd(directory):
         run(' && '.join([activate, command, deactivate]))
 
 
-@setup_env
+@_setup_env
 def update(branch):
+    """
+    Pull in the latest code for the latest release.
+    
+        $ fab update:staging
+        
+    Only to be used for small fixed, typos etc..
+    
+    """
     current_release = base.releases(env.releases_path)[-1]
-    with cd(join(base.current_release_path(), env.github_repo_name)):
+    with cd(_join(base.current_release_path(), env.github_repo_name)):
         git.pull(branch)
 
 
-@setup_env
+@_setup_env
 def start_webapp(branch, **kwargs):
-    virtualenv(
-        join(base.current_release_path(), env.github_repo_name),
+    """
+    Start the webapp as a daemonized twistd plugin
+    
+        $ fab start_webapp:staging,port=8000
+    
+    The port is optional, it defaults to 8000. The port is also used to create
+    the pid and log files, it functions as the unique id for this webapp
+    instance.
+    
+    """
+    _virtualenv(
+        _join(base.current_release_path(), env.github_repo_name),
         twistd.start_command('richmond_webapp', **kwargs)
     )
 
-@setup_env
+@_setup_env
 def restart_webapp(branch, **kwargs):
-    virtualenv(
-        join(base.current_release_path(), env.github_repo_name),
+    """
+    Restart the webapp
+    
+        $ fab restart_webapp:staging,port=8000
+    
+    """
+    _virtualenv(
+        _join(base.current_release_path(), env.github_repo_name),
         twistd.restart_command('richmond_webapp', **kwargs)
     )
 
-@setup_env
+@_setup_env
 def stop_webapp(branch, **kwargs):
-    virtualenv(
-        join(base.current_release_path(), env.github_repo_name),
+    """
+    Stop the webapp
+    
+        $ fab stop_webapp:staging,port=8000
+    
+    """
+    _virtualenv(
+        _join(base.current_release_path(), env.github_repo_name),
         twistd.stop_command('richmond_webapp', **kwargs)
     )
 
-@setup_env
-def releases(branch):
-    releases = base.releases(env.releases_path)
-    print "%(host)s - %(releases_path)s" % env
-    for release in releases:
-        print "\t: %s" % release
-
-    
