@@ -9,8 +9,8 @@ from piston.utils import rc, throttle, require_mime, validate
 from piston.utils import Mimer, FormValidationError
 
 from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
-from richmond.webapp.api import forms
-from richmond.webapp.api import signals
+from richmond.webapp.api import forms, signals
+from richmond.webapp.api.utils import require_content_type
 
 import pystache
 import iso8601
@@ -181,20 +181,19 @@ class ReceiveSMSHandler(BaseHandler):
     exclude = ('user',)
     
     @throttle(60, 60)
-    @require_mime('xml')
+    @require_content_type('text/plain')
     def create(self, request):
         sms = parse_post_event_xml(request.raw_post_data)
         # update the POST to have the `_from` key copied from `from`. 
         # The model has `_from` defined because `from` is a protected python
         # statement
-        d = iso8601.parse_date(sms['Now'])
         form = forms.ReceivedSMSForm({
             'user': request.user.pk,
             'to_msisdn': sms['Local'],
             'from_msisdn': sms['Remote'],
             'message': sms['Text'],
             'transport_name': 'Opera',
-            'received_at': iso8601.parse_date(sms['Now'])
+            'received_at': iso8601.parse_date(sms['ReceiveDate'])
         })
         if not form.is_valid():
             raise FormValidationError(form)

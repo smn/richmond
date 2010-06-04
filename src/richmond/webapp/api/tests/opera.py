@@ -80,40 +80,69 @@ class OperaSMSHandlerTestCase(TestCase):
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(SentSMS.objects.count(), 3)
     
-    def test_sms_receiving(self):
-        self.assertEquals(ReceivedSMS.objects.count(), 0)
+    def test_sms_receiving_with_text_plain_headers(self):
+        """
+        By eavesdropping we got the following log, this is what opera sends.
+        DTD is available at https://dragon.sa.operatelecom.com/MEnable/Client/Extra/bspostevent-1_0_0.dtd
         
-        # from https://dragon.sa.operatelecom.com/MEnable/Client/Extra/bspostevent-1_0_0.dtd
-        now = datetime.utcnow()
+        
+        POST /api/v1/sms/opera/receive.xml HTTP/1.1
+        Content-Length: 1798
+        Content-Type: text/plain; charset=utf-8
+        Authorization: ...
+        Host: ....
+        """
         receive_sms_doc = """
         <?xml version="1.0"?>
         <!DOCTYPE bspostevent>
         <bspostevent>
-            <field name="Text" type="string">hello world</field>
-            <field name="Prefix" type="string"></field>
-            <field name="Remote" type="string">+27123456789</field>
-            <field name="Local" type="string">+27123456789</field>
-            <field name="NewSubscriber" type="string"></field>
-            <field name="Now" type="date">%s</field>
-            <field name="RemoteNetwork" type="string">vodacom-za</field>
-            <field name="ServiceName" type="string">service name</field>
-            <field name="ClientName" type="string">client name</field>
-            <field name="Subscriber" type="string">+27123456789</field>
+          <field name="MOReference" type = "string">282341913</field>
+          <field name="IsReceipt" type = "string">NO</field>
+          <field name="RemoteNetwork" type = "string">mtn-za</field>
+          <field name="BSDate-tomorrow" type = "string">20100605</field>
+          <field name="BSDate-today" type = "string">20100604</field>
+          <field name="ReceiveDate" type = "date">2010-06-04 15:51:25 +0000</field>
+          <field name="Local" type = "string">*32323</field>
+          <field name="ClientID" type = "string">4</field>
+          <field name="ChannelID" type = "string">111</field>
+          <field name="MessageID" type = "string">373736741</field>
+          <field name="ReceiptStatus" type = "string"></field>
+          <field name="Prefix" type = "string"></field>
+          <field name="ClientName" type = "string">Praekelt</field>
+          <field name="MobileDevice" type = "string"></field>
+          <field name="BSDate-yesterday" type = "string">20100603</field>
+          <field name="Remote" type = "string">+27831234567</field>
+          <field name="State" type = "string">5</field>
+          <field name="MobileNetwork" type = "string">mtn-za</field>
+          <field name="MobileNumber" type = "string">+27831234567</field>
+          <field name="Text" type = "string">Hello World</field>
+          <field name="ServiceID" type = "string">20222</field>
+          <field name="RegType" type = "string">1</field>
+          <field name="NewSubscriber" type = "string">NO</field>
+          <field name="Subscriber" type = "string">+27831234567</field>
+          <field name="Parsed" type = "string"></field>
+          <field name="ServiceName" type = "string">Prktl Vumi</field>
+          <field name="BSDate-thisweek" type = "string">20100531</field>
+          <field name="ServiceEndDate" type = "string">2010-06-30 07:47:00 +0200</field>
+          <field name="Now" type = "date">2010-06-04 15:51:27 +0000</field>
         </bspostevent>
-        """ % now.strftime('%Y-%m-%d %H:%M:%S +0000')
+        """
+        
+        self.assertEquals(ReceivedSMS.objects.count(), 0)
         resp = self.client.post(reverse('api:opera:sms-receive'), 
                                     receive_sms_doc.strip(),
-                                    content_type='text/xml')
+                                    content_type='text/plain; charset=utf-8')
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(ReceivedSMS.objects.count(), 1)
         sms = ReceivedSMS.objects.latest()
         self.assertEquals(
             sms.received_at.strftime('%Y-%m-%d %H:%M:%S +0000'), 
-            now.strftime('%Y-%m-%d %H:%M:%S +0000')
+            '2010-06-04 15:51:25 +0000'
         )
-        self.assertEquals(sms.from_msisdn, '+27123456789')
-        self.assertEquals(sms.to_msisdn, '+27123456789')
+        self.assertEquals(sms.from_msisdn, '+27831234567')
+        self.assertEquals(sms.to_msisdn, '*32323')
         self.assertEquals(sms.transport_name, 'Opera')
+        
 
 class OperaSentSMSStatusTestCase(TestCase):
 

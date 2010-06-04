@@ -1,6 +1,7 @@
 import pycurl
 import logging
 from decorator import decorator
+from django.http import HttpResponse
 try:
     # cStringIO is faster
     from cStringIO import StringIO
@@ -65,3 +66,21 @@ def callback(url, list_of_tuples):
         return (url, e)
 
 
+def require_content_type(*content_types):
+    """
+    Decorator requiring a certain content-type. Like piston's require_mime but
+    then without the silly hardcoded rewrite dict.
+    """
+    @decorator
+    def wrap(f, self, request, *args, **kwargs):
+        c_type_string = request.META.get('CONTENT_TYPE', None)
+        if c_type_string:
+            c_type_parts = c_type_string.split(";", 1)
+            c_type = c_type_parts[0].strip()
+            if not c_type in content_types:
+                return HttpResponse(
+                    "Bad Request, only '%s' allowed" % "', '".join(content_types), 
+                    content_type='text/plain', 
+                    status="400")
+        return f(self, request, *args, **kwargs)
+    return wrap

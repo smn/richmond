@@ -16,6 +16,8 @@ Mimer.TYPES = {}
 Mimer.register(yaml.safe_load, ('application/x-yaml',))
 # Do nothing with incoming XML, leave the parsing for the handler
 Mimer.register(lambda *a: None, ('text/xml','application/xml'))
+# Do nothing with plain text, leave the parsing for the handler
+Mimer.register(lambda *a: None, ('text/plain; charset=utf-8',))
 
 
 class ConversationHandler(BaseHandler):
