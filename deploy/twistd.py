@@ -1,27 +1,31 @@
 from fabric.api import *
 from os.path import join
 
-def start(plugin, *args, **kwargs):
-    uuid = kwargs.pop('uuid', 1)
+def start_command(plugin, *args, **kwargs):
+    port = kwargs.setdefault('port', 8000) # default to 8000
     args = ["-%s" % arg for arg in args]
     kwargs = ["--%s=%s" % (k,v) for k,v in kwargs.items()]
-    return run("twistd " \
+    return "twistd " \
         "--pidfile=%(pid_file)s " \
         "--logfile=%(log_file)s " \
         "%(plugin)s " \
         "%(args)s " \
         "%(kwargs)s " % {
-            'pid_file': join(env.pids_path, 'twistd.%s.%s.pid' % (plugin, uuid)),
-            'log_file': join(env.logs_path, 'twistd.%s.%s.log' % (plugin, uuid)),
+            'pid_file': join(env.pids_path, 'twistd.%s.%s.pid' % (plugin, port)),
+            'log_file': join(env.logs_path, 'twistd.%s.%s.log' % (plugin, port)),
             'plugin': plugin,
             'args': ' '.join(args),
             'kwargs': ' '.join(kwargs)
-    })
+    }
 
-def stop(plugin, uuid=1):
-    return run('kill -HUP `cat %s`' % 
-                join(env.pids_path, 'twistd.%s.%s.pid' (plugin, uuid)))
+def stop_command(plugin, port=8000):
+    pid_file = '/'.join([env.pids_path, 'twistd.%s.%s.pid' % (plugin, port)])
+    return 'kill `cat %s`' % pid_file
 
-def restart(plugin, *args, **kwargs):
-    stop(plugin, uuid)
-    start(plugin, *args, **kwargs)
+
+def restart_command(plugin, *args, **kwargs):
+    port = kwargs.setdefault('port', 8000)
+    return ' && '.join([
+        stop_command(plugin, port),
+        start_command(plugin, *args, **kwargs),
+    ])

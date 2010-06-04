@@ -95,7 +95,7 @@ def deploy(branch):
 
 
 @setup_env
-def virtualenv(branch):
+def setup_virtualenv(branch):
     with cd(join(base.current_release_path(), env.github_repo_name)):
         return run(" && ".join([
             "virtualenv --no-site-packages ve",
@@ -104,31 +104,41 @@ def virtualenv(branch):
             "python setup.py install",
         ]))
 
-def _enter_virtualenv():
-    with cd(join(base.current_release(), env.github_repo_name)):
-        run('source ve/bin/activate')
 
-def _exit_virtualenv():
-    run('deactivate')
+def virtualenv(directory, command, env_name='ve'):
+    activate = 'source %s/bin/activate' % env_name
+    deactivate = 'deactivate'
+    with cd(directory):
+        run(' && '.join([activate, command, deactivate]))
+
 
 @setup_env
 def update(branch):
     current_release = base.releases(env.releases_path)[-1]
-    with cd(join(env.releases_path, current_release, env.github_repo_name)):
+    with cd(join(base.current_release_path(), env.github_repo_name)):
         git.pull(branch)
 
 
 @setup_env
-def start(branch):
-    _enter_virtualenv()
-    with cd(base.current_release_path()):
-        twistd.start('richmond_webapp')
-    _exit_virtualenv()
+def start_webapp(branch, **kwargs):
+    virtualenv(
+        join(base.current_release_path(), env.github_repo_name),
+        twistd.start_command('richmond_webapp', **kwargs)
+    )
 
 @setup_env
-def stop(branch):
-    with cd(base.current_release_path()):
-        twistd.stop('richmond_webapp')
+def restart_webapp(branch, **kwargs):
+    virtualenv(
+        join(base.current_release_path(), env.github_repo_name),
+        twistd.restart_command('richmond_webapp', **kwargs)
+    )
+
+@setup_env
+def stop_webapp(branch, **kwargs):
+    virtualenv(
+        join(base.current_release_path(), env.github_repo_name),
+        twistd.stop_command('richmond_webapp', **kwargs)
+    )
 
 @setup_env
 def releases(branch):
