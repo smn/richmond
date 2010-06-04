@@ -95,6 +95,12 @@ def deploy(branch):
 
 
 @setup_env
+def execute(branch, command, release=None):
+    release = release or base.current_release()
+    directory = join(env.releases_path, release, env.github_repo_name)
+    virtualenv(directory, command)
+
+@setup_env
 def setup_virtualenv(branch):
     with cd(join(base.current_release_path(), env.github_repo_name)):
         return run(" && ".join([
