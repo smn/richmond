@@ -1,6 +1,24 @@
 Deploying Richmond
 ------------------
 
+The deploment of Richmond ties directly into how it is being developed with Git.
+
+  1.	All development of Richmond occurs in topical branches. Topical	branches 
+      are all named `topics/...`. For example `topics/smn-fabric-deploys`.
+  2. 	When the new development is finished, `master` is rebased into the topical 
+      branch. If all tests pass then the topical branch is merged into master.
+  3.  When master is ready for testing then it is promoted to the `staging`
+      branch with `git push origin master:staging`.
+  4.  If the staging code is ready for a release then push the staging to 
+      production, ready for a production release with 
+      `git push origin master:production`
+
+The `staging` and `production` branches do not to be tracked locally for you to
+push changes to it, `git push origin master:staging` (or `...
+master:production`) pushes the changes remotely. To avoid conflicts and
+accidental changes in `production` or `staging` it's probably a good idea *not*
+to pull these branches in locally.
+
 For deploying, updating, starting & stopping of services we use [Fabric][fabric].
 
 Start the virtualenv & make sure all the requirements are installed:
@@ -16,7 +34,7 @@ To start the deploy execute the following:
     (ve) $ fab deploy:staging
     ...
     
-Internally this first calls `fab layout_directories:staging` to create the following layout directory:
+Internally this first calls `fab layout:staging` to create the following layout directory:
 
     .
     └── richmond
