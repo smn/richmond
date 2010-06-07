@@ -37,7 +37,7 @@ def _setup_env_for(branch):
     env.pids_path = "%(tmp_path)s/pids" % env
     env.logs_path = "%(shared_path)s/logs" % env
     env.repo_path = "%(shared_path)s/repositories" % env
-    env.django_settings_file = "environments.%(branch)s.py" % env
+    env.django_settings_file = "environments.%(branch)s" % env
     env.layout = [
         env.releases_path,
         env.tmp_path,
@@ -108,11 +108,7 @@ def deploy(branch):
     system.create_dir(new_release_path)
     system.copy_dirs(_repo_path(env.github_repo_name), new_release_path)
     
-    # copy the settings file for this branch to the server
-    put(
-        "environments/%(branch)s.py" % env, 
-        _join(new_release_repo, "environments/%(branch)s.py" % env)
-    )
+    copy_settings_file(branch, release=new_release_name)
     
     symlink_shared_dirs = ['logs', 'tmp']
     for dirname in symlink_shared_dirs:
@@ -120,10 +116,29 @@ def deploy(branch):
             system.remove(dirname, recursive_force=True)
             system.symlink(_join(env.shared_path, dirname), dirname)
     
-    # create_virtualenv(branch)
+    # create the virtualenv
+    create_virtualenv(branch)
     # ensure we're deploying the exact revision as we locally have
     base.set_current(new_release_name)
 
+
+@_setup_env
+def copy_settings_file(branch, release=None):
+    """
+    Copy the settings file for this branch to the server
+    
+        $ fab copy_settings_file:staging
+        
+    If no release is specified it defaults to the latest release.
+    
+    
+    """
+    release = release or base.current_release()
+    directory = _join(env.releases_path, release, env.github_repo_name)
+    put(
+        "environments/%(branch)s.py" % env, 
+        _join(directory, "environments/%(branch)s.py" % env)
+    )
 
 @_setup_env
 def managepy(branch, command, release=None):
@@ -197,7 +212,7 @@ def update(branch):
     
     """
     current_release = base.releases(env.releases_path)[-1]
-    with cd(_join(base.current_release_path(), env.github_repo_name)):
+    with cd(_join(env.current, env.github_repo_name)):
         git.pull(branch)
 
 
@@ -213,11 +228,12 @@ def start_webapp(branch, **kwargs):
     instance.
     
     By default `environments.<branch>` is used but this can be overridden by 
-    specifying settings=environments.somethingelse as a keyword argument.
+    specifying django-settings=environments.somethingelse as a 
+    keyword argument.
     
     """
     _virtualenv(
-        _join(base.current_release_path(), env.github_repo_name),
+        _join(env.current, env.github_repo_name),
         twistd.start_command('richmond_webapp', **kwargs)
     )
 
@@ -230,7 +246,7 @@ def restart_webapp(branch, **kwargs):
     
     """
     _virtualenv(
-        _join(base.current_release_path(), env.github_repo_name),
+        _join(env.current, env.github_repo_name),
         twistd.restart_command('richmond_webapp', **kwargs)
     )
 
@@ -243,7 +259,22 @@ def stop_webapp(branch, **kwargs):
     
     """
     _virtualenv(
-        _join(base.current_release_path(), env.github_repo_name),
+        _join(env.current, env.github_repo_name),
         twistd.stop_command('richmond_webapp', **kwargs)
     )
 
+@_setup_env
+def cleanup(branch,limit=5):
+    """
+    Cleanup old releases
+    
+        $ fab cleanup:staging,limit=10
+    
+    Remove old releases, the limit argument is optional (defaults to 5).
+    """
+    run("cd %(releases_path)s && ls -1 . | head --line=-%(limit)s | " \
+        "xargs rm -rf " % {
+            'releases_path': env.releases_path,
+            'limit': limit
+        }
+    )

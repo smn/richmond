@@ -12,5 +12,3 @@ def releases(releases_path):
 def current_release():
     return releases(env.releases_path)[-1]
 
-def current_release_path():
-    return join(env.releases_path, current_release())
