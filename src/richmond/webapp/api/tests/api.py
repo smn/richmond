@@ -11,6 +11,16 @@ import logging
 LOG_FILENAME = 'logs/richmond.testing.log'
 logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
 
+class PyCurlBugTestCase(TestCase):
+    
+    def test_callback_unicode_warning(self):
+        from richmond.webapp.api.utils import callback
+        self.assertRaises(RuntimeError, callback, 'http://localhost/', (
+            (u'key', 'value'), # unicode keys or values aren't allowed
+        ))
+        self.assertRaises(RuntimeError, callback, 'http://localhost/', (
+            ('key', u'value'), # unicode keys or values aren't allowed
+        ))
 
 class ConversationHandlerTestCase(TestCase):
     

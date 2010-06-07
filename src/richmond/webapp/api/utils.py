@@ -41,6 +41,13 @@ def callback(url, list_of_tuples):
     HTTP POST a list of key value tuples to the given URL and 
     return the response
     """
+    
+    if any([(isinstance(key, unicode) or \
+                isinstance(value, unicode)) \
+            for key,value in list_of_tuples]):
+        raise RuntimeError, "PyCURL will trip on unicode objects. " \
+                            "Make sure you only pass plain string objects."
+    
     data = StringIO()
     ch = pycurl.Curl()
     ch.setopt(pycurl.URL, str(url))
@@ -53,7 +60,7 @@ def callback(url, list_of_tuples):
             "Accept:"
         ])
     ch.setopt(pycurl.WRITEFUNCTION, data.write)
-    ch.setopt(pycurl.HTTPPOST, list_of_tuples)
+    ch.setopt(pycurl.HTTPPOST, list(list_of_tuples))
     ch.setopt(pycurl.FOLLOWLOCATION, 1)
     
     try:
