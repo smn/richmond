@@ -149,9 +149,3 @@ CLICKATELL_DEFAULTS = {
 OPERA_SERVICE_ID = ''
 OPERA_PASSWORD = ''
 OPERA_CHANNEL = ''
-
-# override with production settings
-try:
-    from environments.production import *
-except ImportError:
-    pass

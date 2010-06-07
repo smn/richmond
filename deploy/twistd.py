@@ -4,6 +4,7 @@ from os.path import join
 def start_command(plugin, *args, **kwargs):
     port = kwargs.setdefault('port', 8000) # default to 8000
     args = ["-%s" % arg for arg in args]
+    kwargs.setdefault('settings', env.django_settings_file)
     kwargs = ["--%s=%s" % (k,v) for k,v in kwargs.items()]
     return "twistd " \
         "--pidfile=%(pid_file)s " \

@@ -37,13 +37,14 @@ def _setup_env_for(branch):
     env.pids_path = "%(tmp_path)s/pids" % env
     env.logs_path = "%(shared_path)s/logs" % env
     env.repo_path = "%(shared_path)s/repositories" % env
+    env.django_settings_file = "environments.%(branch)s.py" % env
     env.layout = [
         env.releases_path,
         env.tmp_path,
         env.pip_cache_path,
         env.pids_path,
         env.logs_path,
-        env.repo_path
+        env.repo_path,
     ]
 
 def _repo_path(repo_name):
@@ -107,6 +108,12 @@ def deploy(branch):
     system.create_dir(new_release_path)
     system.copy_dirs(_repo_path(env.github_repo_name), new_release_path)
     
+    # copy the settings file for this branch to the server
+    put(
+        "environments/%(branch)s.py" % env, 
+        _join(new_release_repo, "environments/%(branch)s.py" % env)
+    )
+    
     symlink_shared_dirs = ['logs', 'tmp']
     for dirname in symlink_shared_dirs:
         with cd(new_release_repo):
@@ -119,18 +126,37 @@ def deploy(branch):
 
 
 @_setup_env
+def managepy(branch, command, release=None):
+    """
+    Execute a ./manage.py command in the virtualenv with the current
+    settings file
+    
+        $ fab managepy:staging,"syncdb"
+    
+    This will do a `./manage.py syncdb --settings=environments.staging`
+    within the virtualenv.
+    
+    If no release is specified it defaults to the latest release.
+    
+    """
+    return execute(branch, "./manage.py %s --settings=%s" % (
+        command, 
+        env.django_settings_file
+    ), release)
+
+@_setup_env
 def execute(branch, command, release=None):
     """
     Execute a shell command in the virtualenv
     
-        $ fab execute:staging,"./manage.py syncdb"
+        $ fab execute:staging,"tail logs/*.log"
     
     If no release is specified it defaults to the latest release.
     
     """
     release = release or base.current_release()
     directory = _join(env.releases_path, release, env.github_repo_name)
-    _virtualenv(directory, command)
+    return _virtualenv(directory, command)
 
 @_setup_env
 def create_virtualenv(branch, release=None):
@@ -185,6 +211,9 @@ def start_webapp(branch, **kwargs):
     The port is optional, it defaults to 8000. The port is also used to create
     the pid and log files, it functions as the unique id for this webapp
     instance.
+    
+    By default `environments.<branch>` is used but this can be overridden by 
+    specifying settings=environments.somethingelse as a keyword argument.
     
     """
     _virtualenv(
