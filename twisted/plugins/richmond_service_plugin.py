@@ -17,11 +17,11 @@ class RichmondServiceMaker(object):
     options = Options
     
     def makeService(self, options):
-        required_arguments = ['service', 'config']
+        required_arguments = ['service']
         for argument in required_arguments:
             if argument not in options:
                 raise RuntimeError, 'Please specify what %s to start' % argument
         service_class = load_class_by_string(options.pop('service'))
-        return service_class(options.pop('config'))
+        return service_class(options.pop('config', None))
 
 serviceMaker = RichmondServiceMaker()

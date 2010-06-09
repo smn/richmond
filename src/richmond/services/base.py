@@ -65,9 +65,12 @@ class RichmondService(MultiService):
     def __init__(self, config_file, **kwargs):
         MultiService.__init__(self)
         # read the config file first
-        self.config_file = config_file
-        self.config = ConfigParser.ConfigParser()
-        self.config.readfp(open(config_file))
+        if config_file:
+            self.config_file = config_file
+            self.config = ConfigParser.ConfigParser()
+            self.config.readfp(open(config_file))
+        else:
+            self.config = None
         
         amqp_options = self.get_config('amqp')
         # filter out blank values
@@ -81,7 +84,7 @@ class RichmondService(MultiService):
         self.amqp_client = None
     
     def get_config(self, section):
-        if self.config.has_section(section):
+        if self.config and self.config.has_section(section):
             return dict((option, self.config.get(section, option))
                         for option in self.config.options(section))
         else:
