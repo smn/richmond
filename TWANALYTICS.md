@@ -28,8 +28,8 @@ Drinking from the twitter firehose & analyzing the data.
 
 * Start the Twitter worker with
 
-        twistd --pidfile=tmp/pids/twitter.service.pid -n \
-            richmond_service \    
+        twistd --pidfile=tmp/pids/twitter.worker.1.pid -n \
+            richmond_service \
             -s richmond.services.twitter.worker.TwitterWorker
 
 * Check your data in CouchDB by going to the Twitter database in [Futon][futon] and check the results of the map/reduce queries under the 'views' [drop down menu][continent-africa]
