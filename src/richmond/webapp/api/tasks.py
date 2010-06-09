@@ -34,17 +34,21 @@ class SendSMSTask(Task):
             self.retry(args=[send_sms.pk], kwargs={})
 
     def send_sms_with_opera(self, send_sms):
-        logger = self.get_logger(pk=send_sms.pk)
-        opera = Opera(service_id=settings.OPERA_SERVICE_ID, 
-                        password=settings.OPERA_PASSWORD,
-                        channel=settings.OPERA_CHANNEL,
-                        verbose=settings.DEBUG)
-        [result] = opera.send_sms(
-            msisdns=[send_sms.to_msisdn], 
-            smstexts=[send_sms.message])
-        send_sms.transport_msg_id = result['identifier']
-        send_sms.save()
-        return result
+        try:
+            logger = self.get_logger(pk=send_sms.pk)
+            opera = Opera(service_id=settings.OPERA_SERVICE_ID, 
+                            password=settings.OPERA_PASSWORD,
+                            channel=settings.OPERA_CHANNEL,
+                            verbose=settings.DEBUG)
+            [result] = opera.send_sms(
+                msisdns=[send_sms.to_msisdn], 
+                smstexts=[send_sms.message])
+            send_sms.transport_msg_id = result['identifier']
+            send_sms.save()
+            return result
+        except Exception,e:
+            logger.debug('Retrying...')
+            self.retry(args=[send_sms.pk], kwargs={})
     
     def run(self, pk):
         """
