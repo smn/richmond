@@ -16,6 +16,7 @@ urlpatterns = patterns('',
     (r'^callback\.html$', views.example_sms_callback, {}, 'sms-example-callback'),
 )
 
+# gateways
 urlpatterns += patterns('',
     (r'^sms/clickatell/', 
         include('richmond.webapp.api.gateways.clickatell.urls', 
@@ -23,4 +24,7 @@ urlpatterns += patterns('',
     (r'^sms/opera/', 
         include('richmond.webapp.api.gateways.opera.urls', 
                     namespace='opera')),
+    (r'^sms/e-scape/', 
+        include('richmond.webapp.api.gateways.e_scape.urls', 
+                    namespace='e-scape')),
 )
