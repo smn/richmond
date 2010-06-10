@@ -9,6 +9,15 @@ except ImportError:
     # otherwise this'll do
     from StringIO import StringIO
 
+def specify_fields(model, include=[], exclude=[]):
+    """
+    Silly helper to allow me to specify includes & excludes using the model's
+    fields as a base set instead of an empty set.
+    """
+    include.extend([field.name for field in model._meta.fields
+                if field.name not in exclude])
+    return exclude, include
+
 def model_to_tuples(instance, exclude=[]):
     """
     Somewhat lame function to convert a model instance's fields & values to

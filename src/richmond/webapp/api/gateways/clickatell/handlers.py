@@ -8,21 +8,12 @@ from piston.utils import Mimer, FormValidationError
 from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
 from richmond.webapp.api import forms
 from richmond.webapp.api import signals
+from richmond.webapp.api.utils import specify_fields
 
 from alexandria.loader.base import YAMLLoader
 from alexandria.dsl.utils import dump_menu
 
 import pystache
-
-def specify_fields(model, include=[], exclude=[]):
-    """
-    Silly helper to allow me to specify includes & excludes using the model's
-    fields as a base set instead of an empty set.
-    """
-    include.extend([field.name for field in model._meta.fields
-                if field.name not in exclude])
-    return exclude, include
-
 
 class SMSReceiptHandler(BaseHandler):
     allowed_methods = ('POST',)

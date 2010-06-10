@@ -1,58 +1,23 @@
 import re, yaml, logging
 from datetime import datetime, timedelta
 
-from django.http import HttpResponse
-from django.utils import simplejson
-
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 from piston.utils import Mimer, FormValidationError
 
 from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
-from richmond.webapp.api import forms, signals
-from richmond.webapp.api.utils import require_content_type, specify_fields
+from richmond.webapp.api import forms
+from richmond.webapp.api import signals
+from richmond.webapp.api.utils import specify_fields
+
+from alexandria.loader.base import YAMLLoader
+from alexandria.dsl.utils import dump_menu
 
 import pystache
-import iso8601
-
-from utils import parse_receipts_xml, parse_post_event_xml, OPERA_TIMESTAMP_FORMAT
 
 class SMSReceiptHandler(BaseHandler):
-    allowed_methods = ('POST',)
-    
-    # TODO: Add Form validation for XML input
-    @throttle(60, 60) # allow for 1 a second
-    @require_mime('xml')
-    def create(self, request):
-        receipts = parse_receipts_xml(request.raw_post_data)
-        success, fail = [], []
-        for receipt in receipts:
-            try:
-                # internally we store MSISDNs without a leading plus, strip that
-                # from the msisdn
-                sms = SentSMS.objects.get(
-                                        transport_name = "Opera",
-                                        transport_msg_id=receipt.reference, 
-                                        to_msisdn=receipt.msisdn.replace("+",""))
-                sms.transport_status = receipt.status
-                sms.delivery_timestamp = datetime.strptime(receipt.timestamp, 
-                                                        OPERA_TIMESTAMP_FORMAT)
-                sms.save()
-                
-                signals.sms_receipt.send(sender=SentSMS, instance=sms, 
-                                            pk=sms.pk, 
-                                            receipt=receipt._asdict())
-                success.append(receipt)
-            except SentSMS.DoesNotExist, error:
-                logging.error(error)
-                fail.append(receipt)
-                
-        
-        return HttpResponse(simplejson.dumps({
-            'success': map(lambda rcpt: rcpt._asdict(), success),
-            'fail': map(lambda rcpt: rcpt._asdict(), fail)
-        }), status=201, content_type='application/json; charset=utf-8')
-    
+    # not implemented, gateway doesn't support it
+    allowed_methods = ()
 
 
 class SendSMSHandler(BaseHandler):
@@ -63,13 +28,13 @@ class SendSMSHandler(BaseHandler):
     
     def _send_one(self, **kwargs):
         kwargs.update({
-            'transport_name': 'Opera'
+            'transport_name': 'E-scape'
         })
         form = forms.SentSMSForm(kwargs)
         if not form.is_valid():
             raise FormValidationError(form)
         send_sms = form.save()
-        logging.debug('Scheduling an SMS to: %s' % send_sms.to_msisdn)
+        logging.debug('Scheduling an SMS to: %s' % kwargs['to_msisdn'])
         signals.sms_scheduled.send(sender=SentSMS, instance=send_sms,
                                     pk=send_sms.pk)
         return send_sms
@@ -125,7 +90,7 @@ class SendTemplateSMSHandler(BaseHandler):
             'from_msisdn': from_msisdn,
             'message': template.render(context=context),
             'user': user_id,
-            'transport_name': 'Opera'
+            'transport_name': 'Clickatell'
         })
         if not form.is_valid():
             raise FormValidationError(form)
@@ -166,24 +131,22 @@ class SendTemplateSMSHandler(BaseHandler):
         return responses
 
 class ReceiveSMSHandler(BaseHandler):
-    allowed_methods = ('POST',)
-    model = ReceivedSMS
+    """
+    NOTE: This gateway sends the variables to us via GET instead of POST.
+    """
+    allowed_methods = ('GET',)
     exclude = ('user',)
     
     @throttle(60, 60)
-    @require_content_type('text/plain')
-    def create(self, request):
-        sms = parse_post_event_xml(request.raw_post_data)
-        # update the POST to have the `_from` key copied from `from`. 
-        # The model has `_from` defined because `from` is a protected python
-        # statement
+    def read(self, request):
         form = forms.ReceivedSMSForm({
             'user': request.user.pk,
-            'to_msisdn': sms['Local'],
-            'from_msisdn': sms['Remote'],
-            'message': sms['Text'],
-            'transport_name': 'Opera',
-            'received_at': iso8601.parse_date(sms['ReceiveDate'])
+            'to_msisdn': request.GET.get('r'),
+            'from_msisdn': request.GET.get('s'),
+            'message': request.GET.get('text'),
+            'transport_name': 'E-scape',
+            'transport_msg_id': request.GET.get('smsc'),
+            'received_at': datetime.utcnow()
         })
         if not form.is_valid():
             raise FormValidationError(form)
@@ -192,13 +155,8 @@ class ReceiveSMSHandler(BaseHandler):
         logging.debug('Receiving an SMS from: %s' % receive_sms.from_msisdn)
         signals.sms_received.send(sender=ReceivedSMS, instance=receive_sms, 
                                     pk=receive_sms.pk)
-        
-        # return the response we got back to Opera, it could be re-routed
-        # to other services in a callback chain.
         response = rc.ALL_OK
-        response.content = request.raw_post_data
-        response['Content-Type'] = 'text/xml; charset=utf8'
+        response.content = ''
         return response
-    
 
 
