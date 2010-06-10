@@ -295,7 +295,11 @@ function(doc) {
         if (doc.user.time_zone != '') {
             if(doc.user.time_zone in time_zones) {
                 emit(time_zones[doc.user.time_zone], 1);
+            } else {
+                emit('Unknown', 1);
             }
+        } else {
+            emit('Unspecified', 1);
         }
     }
 }

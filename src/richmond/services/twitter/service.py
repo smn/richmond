@@ -29,7 +29,7 @@ class TwitterService(base.RichmondService):
                                 addErrback(log.err)
     
     def status_part_to_dict(self, part, keys=[]):
-        return dict([(key, getattr(part,key)) for key in keys])
+        return dict([(key, getattr(part,key)) for key in keys if hasattr(part, key)])
     
     def handle_status(self, status):
         data = self.status_part_to_dict(status, ['geo','text', 'created_at'])
@@ -49,4 +49,20 @@ class TwitterService(base.RichmondService):
     
     def stop(self):
         pass
+
+class TwitterSampleService(TwitterService):
+    
+    @inlineCallbacks
+    def start(self, **options):
+        self.options = options
+        username = self.options['username']
+        password = self.options['password']
+        
+        self.publisher = yield self.create_publisher(Publisher).addErrback(log.err)
+        self.consumer = yield self.create_consumer(Consumer).addErrback(log.err)
+        self.stream = yield twitter.TwitterFeed(username, password). \
+                                sample(self.handle_status). \
+                                addErrback(log.err)
+        print 'created stream', self.stream
+    
     
