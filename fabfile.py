@@ -190,7 +190,7 @@ def create_virtualenv(branch, release=None):
             "virtualenv --no-site-packages ve",
             "source ve/bin/activate",
             "pip -E ve install --download-cache=%(pip_cache_path)s -r config/requirements.pip" % env,
-            "python setup.py install",
+            "python setup.py develop",
         ]))
 
 
