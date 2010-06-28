@@ -9,7 +9,7 @@ from deploy import git, system, base, twistd
 
 RELEASE_NAME_FORMAT = '%Y%m%d_%H%M%S' # timestamped
 # default for now
-env.hosts = ['ubuntu-server.local']
+# env.hosts = ['ubuntu-server.local']
 
 def _setup_env(fn):
     def wrapper(branch, *args, **kwargs):
