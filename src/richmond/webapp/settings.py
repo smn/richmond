@@ -76,8 +76,6 @@ TEMPLATE_DIRS = (
     join(APP_ROOT, 'webapp', 'templates'),
 )
 
-print TEMPLATE_DIRS
-
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
