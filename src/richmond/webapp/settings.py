@@ -7,6 +7,10 @@ ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
 )
 
+from os.path import abspath, join, dirname, basename
+APP_ROOT = abspath(join(dirname(__file__),'..'))
+PROJECT_NAME = basename(APP_ROOT)
+
 MANAGERS = ADMINS
 
 DATABASE_ENGINE = 'postgresql_psycopg2'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
@@ -69,8 +73,10 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    'templates',
+    join(APP_ROOT, 'webapp', 'templates'),
 )
+
+print TEMPLATE_DIRS
 
 INSTALLED_APPS = (
     'django.contrib.admin',

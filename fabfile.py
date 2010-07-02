@@ -238,6 +238,18 @@ def start_webapp(branch, **kwargs):
     )
 
 @_setup_env
+def start_webapp_cluster(branch, *ports, **kwargs):
+    """
+    Start the webapp cluster
+    
+        $ fab start_webapp_cluster:staging,8000,8001,8002,8003
+    
+    """
+    for port in ports:
+        start_webapp(branch,port=port, **kwargs)
+    
+
+@_setup_env
 def restart_webapp(branch, **kwargs):
     """
     Restart the webapp
@@ -251,6 +263,16 @@ def restart_webapp(branch, **kwargs):
     )
 
 @_setup_env
+def restart_webapp_cluster(branch, *ports, **kwargs):
+    """
+    Restart a cluster of webapp instances
+    
+        $ fab restart_webapp_cluster:staging,8000,8001,8002,8003
+    """
+    for port in ports:
+        restart_webapp(branch, port=port, **kwargs)
+
+@_setup_env
 def stop_webapp(branch, **kwargs):
     """
     Stop the webapp
@@ -262,6 +284,18 @@ def stop_webapp(branch, **kwargs):
         _join(env.current, env.github_repo_name),
         twistd.stop_command('richmond_webapp', **kwargs)
     )
+
+@_setup_env
+def stop_webapp_cluster(branch, *ports, **kwargs):
+    """
+    Stop the webapp cluster
+    
+        $ fab stop_webapp_cluster:staging,8000,8001,8002,8003
+    
+    """
+    for port in ports:
+        stop_webapp(branch, port=port, **kwargs)
+
 
 @_setup_env
 def cleanup(branch,limit=5):
