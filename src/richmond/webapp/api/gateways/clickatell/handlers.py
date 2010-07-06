@@ -18,7 +18,7 @@ import pystache
 class SMSReceiptHandler(BaseHandler):
     allowed_methods = ('POST',)
     
-    @throttle(900, 60) # allow for 15 a second
+    @throttle(6000, 60) # allow for 100 a second
     @validate(forms.SMSReceiptForm)
     def create(self, request):
         logging.debug('Got notified of a delivered SMS to: %s' % request.POST['to'])
@@ -64,7 +64,7 @@ class SendSMSHandler(BaseHandler):
                                     pk=send_sms.pk)
         return send_sms
     
-    @throttle(900, 60) # allow for 15 a second
+    @throttle(6000, 60) # allow for 100 a second
     def create(self, request):
         return [self._send_one(user=request.user.pk, 
                                 to_msisdn=msisdn,
@@ -124,7 +124,7 @@ class SendTemplateSMSHandler(BaseHandler):
                                     pk=send_sms.pk)
         return send_sms
     
-    @throttle(900, 60) # allow for 15 a second
+    @throttle(6000, 60) # allow for 100 a second
     def create(self, request):
         template_string = request.POST.get('template')
         template = pystache.Template(template_string)
@@ -160,7 +160,7 @@ class ReceiveSMSHandler(BaseHandler):
     model = ReceivedSMS
     exclude = ('user',)
     
-    @throttle(900, 60) # allow for 15 a second
+    @throttle(6000, 60) # allow for 100 a second
     def create(self, request):
         form = forms.ReceivedSMSForm({
             'user': request.user.pk,
