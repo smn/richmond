@@ -21,7 +21,7 @@ class SMSReceiptHandler(BaseHandler):
     allowed_methods = ('POST',)
     
     # TODO: Add Form validation for XML input
-    @throttle(60, 60) # allow for 1 a second
+    @throttle(6000, 60) # allow for 100 a second
     @require_mime('xml')
     def create(self, request):
         receipts = parse_receipts_xml(request.raw_post_data)
@@ -74,7 +74,7 @@ class SendSMSHandler(BaseHandler):
                                     pk=send_sms.pk)
         return send_sms
     
-    @throttle(60, 60) # allow for 1 a second
+    @throttle(6000, 60) # allow for 100 a second
     def create(self, request):
         return [self._send_one(user=request.user.pk, 
                                 to_msisdn=msisdn,
@@ -134,7 +134,7 @@ class SendTemplateSMSHandler(BaseHandler):
                                     pk=send_sms.pk)
         return send_sms
     
-    @throttle(60, 60)
+    @throttle(6000, 60) # allow for 100 a second
     def create(self, request):
         template_string = request.POST.get('template')
         template = pystache.Template(template_string)
@@ -170,7 +170,7 @@ class ReceiveSMSHandler(BaseHandler):
     model = ReceivedSMS
     exclude = ('user',)
     
-    @throttle(60, 60)
+    @throttle(6000, 60) # allow for 100 a second
     @require_content_type('text/plain')
     def create(self, request):
         sms = parse_post_event_xml(request.raw_post_data)

@@ -312,3 +312,57 @@ def cleanup(branch,limit=5):
             'limit': limit
         }
     )
+
+def _get_screens(name_prefix):
+    original_warn_only = env.warn_only
+    env.warn_only = True
+    screens = [line.strip() for line in \
+                run("screen -ls | grep %s" % name_prefix).split('\n')]
+    env.warn_only = original_warn_only
+    if not screens:
+        return []
+    screen_names = [screen.split()[0] for screen in screens]
+    pid_names = [screen_name.split(".") for screen_name in screen_names]
+    return [(pid_name[0], pid_name[1].split("_")[-1]) for pid_name in pid_names]
+
+@_setup_env
+def start_celery_worker(branch, uuid):
+    """
+    Start a celery worker
+    
+        $ fab start_celery:staging,1
+        
+    """
+    with cd(_join(env.current, env.github_repo_name)):
+        run("screen -dmS celery_%(uuid)s ./start-celery.sh %(settings)s %(uuid)s" % {
+            'uuid': uuid,
+            'settings': env.django_settings_file
+        })
+        
+@_setup_env
+def list_celery_workers(branch):
+    """
+    List all running celery workers
+    
+        $ fab list_celery_workers:staging
+    
+    """
+    with cd(_join(env.current, env.github_repo_name)):
+        sessions = _get_screens("celery_")
+        for pid,uuid in sessions:
+            print "Celery Worker => pid:%s, uuid:%s" % (pid, uuid)
+        
+
+@_setup_env
+def stop_celery_worker(branch, uuid):
+    """
+    Stop a celery worker
+    
+        $ fab stop_celery:staging,1
+    
+    """
+    with cd(_join(env.current, env.github_repo_name)):
+        sessions = _get_screens("celery_")
+        for pid,uuid_ in sessions:
+            if uuid_ == uuid:
+                run("kill %s" % pid)
