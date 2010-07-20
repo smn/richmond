@@ -50,6 +50,22 @@ class SendSMSTask(Task):
             logger.debug('Retrying...')
             self.retry(args=[send_sms.pk], kwargs={})
     
+    def send_sms_with_e_scape(self, send_sms):
+        try:
+            logger = self.get_logger(pk=send_sms.pk)
+            e_scape = E_Scape(settings.E_SCAPE_API_ID)
+            [result] = e_scape.send_sms(
+                smsc = settings.E_SCAPE_SMSC,
+                sender = send_sms.from_msisdn,
+                recipients = [send_sms.to_msisdn],
+                text = send_sms.message
+            )
+            send_sms.save()
+            return result
+        except Exception, e:
+            logger.debug('Retrying...')
+            self.retry(args=[send_sms.pk], kwargs={})
+    
     def run(self, pk):
         """
         FIXME:  preferably we'd have different queues for different transports.
@@ -60,7 +76,8 @@ class SendSMSTask(Task):
         send_sms = SentSMS.objects.get(pk=pk)
         dispatch = {
             'clickatell': self.send_sms_with_clickatell,
-            'opera': self.send_sms_with_opera
+            'opera': self.send_sms_with_opera,
+            'e-scape': self.send_sms_with_e_scape
         }
         dispatcher = dispatch.get(send_sms.transport_name.lower())
         if dispatcher:
