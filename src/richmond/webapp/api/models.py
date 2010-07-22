@@ -133,23 +133,6 @@ class Profile(models.Model):
     def __unicode__(self):
         return u"Profile"
     
-    def set_callback(self, name, url):
-        from forms import URLCallbackForm
-        kwargs = {
-            'name':name, 
-            'url': url,
-            'profile': self.pk
-        }
-        try:
-            form = URLCallbackForm(kwargs, instance=self.urlcallback_set.get(name=name))
-        except URLCallback.DoesNotExist, e:
-            form = URLCallbackForm(kwargs)
-        
-        if form.is_valid():
-            return form.save()
-        else:
-            return False
-        
 
 CALLBACK_CHOICES = (
     ('sms_received', 'SMS Received'),
@@ -163,10 +146,11 @@ class URLCallback(models.Model):
     url = models.URLField(blank=True, verify_exists=False)
     created_at = models.DateTimeField(blank=True, auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, auto_now=True)
-
+    
+    def __unicode__(self):
+        return u"URLCallback %s - %s" % (self.name, self.url)
 
 admin.site.register(SentSMS)
 admin.site.register(ReceivedSMS)
 admin.site.register(Profile)
 admin.site.register(URLCallback)
-

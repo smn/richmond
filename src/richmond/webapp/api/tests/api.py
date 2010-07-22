@@ -2,8 +2,10 @@ from django.test import TestCase
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 from time import time
+import json
 from datetime import datetime, timedelta
 
+from richmond.webapp.api.signals import *
 from richmond.webapp.api.models import *
 from richmond.webapp.api.tests.utils import APIClient
 
@@ -64,9 +66,13 @@ class URLCallbackHandlerTestCase(TestCase):
     
     def test_setting_callback_url(self):
         self.assertEquals(URLCallback.objects.count(), 0)
-        resp = self.client.put(reverse('api:url-callbacks'), {
-            'sms_received': 'http://localhost/url/sms/received',
-            'sms_receipt': 'http://localhost/url/sms/receipt',
+        resp = self.client.post(reverse('api:url-callbacks-list'), {
+            'name': 'sms_receipt',
+            'url': 'http://localhost/url/sms/receipt',
+        })
+        resp = self.client.post(reverse('api:url-callbacks-list'), {
+            'name': 'sms_received',
+            'url': 'http://localhost/url/sms/received',
         })
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(URLCallback.objects.count(), 2)
@@ -80,5 +86,63 @@ class URLCallbackHandlerTestCase(TestCase):
         })
         # this should show up in the testing log because pycurl can't
         # connect to the given host for the callback
-
-
+    
+    def test_setting_multiple_callback_urls(self):
+        self.assertEquals(URLCallback.objects.count(), 0)
+        for name, urls in [
+            ('sms_received', [
+                'http://localhost/url/sms/received/1',
+                'http://localhost/url/sms/received/2'
+            ]),
+            ('sms_receipt', [
+                'http://localhost/url/sms/receipt/1',
+                'http://localhost/url/sms/receipt/2',
+            ])]:
+            for url in urls:
+                resp = self.client.post(reverse('api:url-callbacks-list'), {
+                    'name': name,
+                    'url': url
+                })
+                self.assertEquals(resp.status_code, 200)
+        
+        self.assertEquals(URLCallback.objects.count(), 4)
+        resp = self.client.post(reverse('api:clickatell:sms-receive'), {
+            'to': '27123456789',
+            'from': '27123456789',
+            'moMsgId': 'a' * 12,
+            'api_id': 'b' * 12,
+            'text': 'hello world',
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S") # MySQL format
+        })
+    
+    def test_updating_callback_urls(self):
+        self.assertEquals(URLCallback.objects.count(), 0)
+        resp = self.client.post(reverse('api:url-callbacks-list'), {
+            'name': 'sms_receipt',
+            'url': 'http://localhost/url/sms/receipt',
+        })
+        self.assertEquals(URLCallback.objects.count(), 1)
+        data = json.loads(resp.content)
+        resp = self.client.put(reverse('api:url-callback', kwargs={
+                'callback_id': data['id']
+            }), {
+            'url': 'http://localhost/url/sms/receipt1'
+        })
+        updated_callback = URLCallback.objects.latest('updated_at')
+        self.assertEquals(updated_callback.url, 'http://localhost/url/sms/receipt1')
+        
+    
+    def test_deleting_callback_urls(self):
+        self.assertEquals(URLCallback.objects.count(), 0)
+        resp = self.client.post(reverse('api:url-callbacks-list'), {
+            'name': 'sms_receipt',
+            'url': 'http://localhost/url/sms/receipt',
+        })
+        data = json.loads(resp.content)
+        self.assertEquals(URLCallback.objects.count(), 1)
+        resp = self.client.delete(reverse('api:url-callback', kwargs={
+            'callback_id': data['id']
+        }))
+        self.assertEquals(resp.status_code, 204)
+        self.assertEquals(resp.content, '')
+        self.assertEquals(URLCallback.objects.count(), 0)

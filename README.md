@@ -359,25 +359,31 @@ Specifying Callbacks
 
 There are two types of callbacks defined. These are `sms_received` and `sms_receipt`. Each trigger an HTTP POST to the given URLs.
 
-    $ curl -u 'username:password' -X PUT \
-    > http://localhost:8000/api/v1/account/callbacks.json \
-    > -d 'sms_received=http://localhost/sms/clickatell/received/callback' \
-    > -d 'sms_receipt=http://localhost/sms/clickatell/receipt/callback'
-    [
-        {
-            "url": "http://localhost/sms/clickatell/received/callback", 
-            "created_at": "2010-05-14 16:50:13", 
-            "name": "sms_received", 
-            "updated_at": "2010-05-14 16:50:13"
-        }, 
-        {
-            "url": "http://localhost/sms/clickatell/receipt/callback", 
-            "created_at": "2010-05-14 16:50:13", 
-            "name": "sms_receipt", 
-            "updated_at": "2010-05-14 16:50:13"
-        }
-    ]
 
+    $ curl -u 'username:password' -X POST \
+    > http://localhost:8000/api/v1/account/callbacks.json \
+    > -d 'name=sms_received' \
+    > -d 'url=http://localhost/sms/clickatell/received/callback'
+    {
+        "name": "sms_received", 
+        "url": "http://localhost/sms/clickatell/received/callback", 
+        "created_at": "2010-07-22 21:27:24", 
+        "updated_at": "2010-07-22 21:27:24", 
+        "id": 3
+    }
+    
+    $ curl -u 'username:password' -X POST \
+    > http://localhost:8000/api/v1/account/callbacks.json \
+    > -d 'name=sms_receipt' \
+    > -d 'url=http://localhost/sms/clickatell/receipt/callback'
+    {
+        "name": "sms_receipt", 
+        "url": "http://localhost/sms/clickatell/receipt/callback", 
+        "created_at": "2010-07-22 21:32:33", 
+        "updated_at": "2010-07-22 21:32:33", 
+        "id": 4
+    }
+    
 The next time an SMS is received or a SMS receipt is delivered, Richmond will post the data to the URLs specified.
 
 Accepting delivery receipts from the transports

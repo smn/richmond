@@ -12,7 +12,8 @@ urlpatterns = patterns('',
     (r'^conversation\.yaml$', conversation_resource, {
         'emitter_format': 'yaml'
     }, 'conversation'),
-    (r'^account/callbacks.json$', url_callback_resource, {}, 'url-callbacks'),
+    (r'^account/callbacks\.json$', url_callback_resource, {}, 'url-callbacks-list'),
+    (r'^account/callbacks/(?P<callback_id>\d+)\.json$', url_callback_resource, {}, 'url-callback'),
     (r'^callback\.html$', views.example_sms_callback, {}, 'sms-example-callback'),
 )
 

@@ -2,6 +2,9 @@ from django.conf.urls.defaults import *
 from django.contrib import admin
 admin.autodiscover()
 
+# always load the signals
+from richmond.webapp.api.signals import *
+
 urlpatterns = patterns('',
     # Example:
     (r'^api/v1/', include('richmond.webapp.api.urls', namespace="api")),

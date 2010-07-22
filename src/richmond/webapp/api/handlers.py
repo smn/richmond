@@ -1,9 +1,10 @@
 import yaml, logging
 from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime
-from piston.utils import Mimer
+from piston.utils import Mimer, FormValidationError, rc
 
 from richmond.webapp.api.models import URLCallback
+from richmond.webapp.api.forms import URLCallbackForm
 
 from alexandria.loader.base import YAMLLoader
 from alexandria.dsl.utils import dump_menu
@@ -34,14 +35,43 @@ class ConversationHandler(BaseHandler):
     
 
 class URLCallbackHandler(BaseHandler):
-    allowed_methods = ('PUT',)
-    model = URLCallback
+    allowed_methods = ('POST', 'PUT', 'GET', 'DELETE')
     exclude = ('profile','id')
     
     @throttle(60, 60)
-    def update(self, request):
+    def update(self, request, callback_id=None):
         profile = request.user.get_profile()
-        name_field = self.model._meta.get_field('name')
-        possible_keys = [key for key, value in name_field.choices]
-        return [profile.set_callback(key, request.POST.get(key)) \
-                                            for key in possible_keys]
+        callback = profile.urlcallback_set.get(pk=callback_id)
+        kwargs = request.POST.copy()
+        kwargs.update({
+            'profile': profile.pk
+        })
+        form = URLCallbackForm(kwargs, instance=callback)
+        if not form.is_valid():
+            raise FormValidationError(form)
+        return form.save()
+    
+    @throttle(60, 60)
+    def create(self, request):
+        kwargs = request.POST.copy()
+        kwargs.update({
+            'profile': request.user.get_profile().pk
+        })
+        form = URLCallbackForm(kwargs)
+        if not form.is_valid():
+            raise FormValidationError(form)
+        return form.save()
+    
+    @throttle(60, 60)
+    def read(self, request, callback_id=None):
+        profile = request.user.get_profile()
+        if callback_id:
+            return profile.urlcallback_set.get(pk=callback_id)
+        return profile.urlcallback_set.all()
+    
+    @throttle(60, 60)
+    def delete(self, request, callback_id):
+        profile = request.user.get_profile()
+        callback = profile.urlcallback_set.get(pk=callback_id)
+        callback.delete()
+        return rc.DELETED
