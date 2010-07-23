@@ -18,6 +18,9 @@ class Techsys(object):
         
         response = urlopen(self.url, urlencode(post)).read()
         logging.debug('Received Techsys response: %s' % response)
+        return self.parse_response(response)
+    
+    def parse_response(self, response):
         if 'Message queued successfully' not in response:
             raise TechsysException('SMS sending failed: %s' % response)
         return response

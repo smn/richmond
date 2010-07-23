@@ -70,10 +70,9 @@ class SendSMSTask(Task):
     
     def send_sms_with_techsys(self, send_sms):
         try:
-            logger = self.get_logger(pk=send_sms.pk)
             techsys = Techsys(settings.TECH_SYS_SMS_GATEWAY_URL,
                                 settings.TECH_SYS_SMS_GATEWAY_BIND)
-            [result] = techsys.send_sms(
+            result = techsys.send_sms(
                 recipient=send_sms.to_msisdn,
                 text=send_sms.message
             )
