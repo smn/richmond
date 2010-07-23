@@ -28,4 +28,7 @@ urlpatterns += patterns('',
     (r'^sms/e-scape/', 
         include('richmond.webapp.api.gateways.e_scape.urls', 
                     namespace='e-scape')),
+    (r'^sms/techsys/',
+        include('richmond.webapp.api.gateways.techsys.urls',
+                    namespace='techsys')),
 )

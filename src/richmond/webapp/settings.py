@@ -157,3 +157,7 @@ OPERA_CHANNEL = ''
 # for E-Scape
 E_SCAPE_API_ID = ''
 E_SCAPE_SMSC = ''
+
+# for Techsys
+TECH_SYS_SMS_GATEWAY_URL = ''
+TECH_SYS_SMS_GATEWAY_BIND = ''

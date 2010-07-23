@@ -10,6 +10,8 @@ from clickatell.response import OKResponse, ERRResponse
 
 # simple wrapper for Opera's XML-RPC service
 from richmond.webapp.api.gateways.opera.backend import Opera
+from richmond.webapp.api.gateways.e_scape.backend import E_Scape
+from richmond.webapp.api.gateways.techsys.backend import Techsys
 
 class SendSMSTask(Task):
     routing_key = 'richmond.webapp.sms.send'
@@ -66,6 +68,21 @@ class SendSMSTask(Task):
             logger.debug('Retrying...')
             self.retry(args=[send_sms.pk], kwargs={})
     
+    def send_sms_with_techsys(self, send_sms):
+        try:
+            logger = self.get_logger(pk=send_sms.pk)
+            techsys = Techsys(settings.TECH_SYS_SMS_GATEWAY_URL,
+                                settings.TECH_SYS_SMS_GATEWAY_BIND)
+            [result] = techsys.send_sms(
+                recipient=send_sms.to_msisdn,
+                text=send_sms.message
+            )
+            send_sms.save()
+            return result
+        except Exception, e:
+            logger.debug('Retrying')
+            self.retry(args=[send_sms.pk], kwargs={})
+    
     def run(self, pk):
         """
         FIXME:  preferably we'd have different queues for different transports.
@@ -77,7 +94,8 @@ class SendSMSTask(Task):
         dispatch = {
             'clickatell': self.send_sms_with_clickatell,
             'opera': self.send_sms_with_opera,
-            'e-scape': self.send_sms_with_e_scape
+            'e-scape': self.send_sms_with_e_scape,
+            'techsys': self.send_sms_with_techsys,
         }
         dispatcher = dispatch.get(send_sms.transport_name.lower())
         if dispatcher:
