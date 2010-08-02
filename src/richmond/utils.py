@@ -29,7 +29,7 @@ def load_class_by_string(class_path):
     return load_class(module_name, class_name)
 
 
-def filter_options_on_prefix(options, prefix):
+def filter_options_on_prefix(options, prefix, delimiter='-'):
     """
     splits an options dict based on key prefixes
     
@@ -38,7 +38,7 @@ def filter_options_on_prefix(options, prefix):
     >>> 
     
     """
-    return dict((key.split("-",1)[1], value) \
+    return dict((key.split(delimiter,1)[1], value) \
                 for key, value in options.items() \
                 if key.startswith(prefix))
 
