@@ -1,30 +1,25 @@
-from zope.interface import implements
-from twisted.python import usage, log
-from twisted.application.service import IServiceMaker, Service
-from twisted.plugin import IPlugin
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.internet import reactor, protocol
-
-from richmond.utils import filter_options_on_prefix
-
-from txamqp.protocol import AMQClient
+from twisted.python import log, usage
+from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
+from twisted.internet import protocol
 from txamqp.client import TwistedDelegate
 from txamqp.content import Content
+from txamqp.protocol import AMQClient
 import txamqp
 import json
+import sys
 
 class Options(usage.Options):
     optParameters = [
-        ["amqp-hostname", None, "127.0.0.1", "AMQP broker"],
-        ["amqp-port", None, 5672, "AMQP port", int],
-        ["amqp-username", None, "richmond", "AMQP username"],
-        ["amqp-password", None, "richmond", "AMQP password"],
-        ["amqp-vhost", None, "/richmond", "AMQP virtual host"],
-        ["amqp-specfile", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
-        ["service", "s", None, "The Richmond service class to start"]
+        ["hostname", None, "127.0.0.1", "AMQP broker"],
+        ["port", None, 5672, "AMQP port", int],
+        ["username", None, "richmond", "AMQP username"],
+        ["password", None, "richmond", "AMQP password"],
+        ["vhost", None, "/richmond", "AMQP virtual host"],
+        ["specfile", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
     ]
 
-class AmqpProtocol(AMQClient):
+
+class Worker(AMQClient):
     
     def connectionMade(self):
         AMQClient.connectionMade(self)
@@ -35,7 +30,7 @@ class AmqpProtocol(AMQClient):
     @inlineCallbacks
     def authenticated(self, ignore):
         log.msg("Got an authenticated connection")
-        yield self.start_service()
+        yield self.startWorker()
     
     @inlineCallbacks
     def get_channel(self, channel_id=None):
@@ -96,9 +91,9 @@ class Consumer(object):
     queue_name = "queue"
     routing_key = "routing_key"
     
-    def __init__(self, publisher):
+    def __init__(self):
         """Start the consumer"""
-        self.publisher = publisher
+        pass
     
     @inlineCallbacks
     def start(self, channel, queue):
@@ -110,22 +105,20 @@ class Consumer(object):
             log.msg("Consumer starting...")
             try:
                 while True:
-                    log.msg("Waiting for messages")
                     message = yield self.queue.get()
                     self.raw_consume(message)
-            except queue.Closed, e:
+            except txamqp.queue.Closed, e:
                 log.err("Queue has closed: %s" % e)
         read_messages()
         yield None
         returnValue(self)
     
     def raw_consume(self, message):
-        self.consume(json.loads(message.content.body))
+        self.consume_json(json.loads(message.content.body))
         self.ack(message)
     
-    def consume(self, dictionary):
+    def consume_json(self, dictionary):
         log.msg("Received dict: %s" % dictionary)
-        self.publisher.publish(dictionary)
     
     def ack(self, message):
         self.channel.basic_ack(message.delivery_tag, True)
@@ -137,96 +130,60 @@ class Publisher(object):
     routing_key = "routing_key"
     durable = False
     auto_delete = False
+    delivery_mode = 2 # save to disk
     
     def start(self, channel):
         log.msg("Started the publisher")
         self.channel = channel
     
     def publish(self, data):
-        log.msg("Publishing '%s' to exchange '%s' with routing key '%s'" % (
-            data, self.exchange_name, self.routing_key))
         message = Content(json.dumps(data))
-        message['delivery mode'] = 2 # save to disk
+        message['delivery mode'] = self.delivery_mode
         self.channel.basic_publish(exchange=self.exchange_name, 
                                         content=message, 
                                         routing_key=self.routing_key)
-        
 
-class ExampleService(AmqpProtocol):
-    
-    @inlineCallbacks
-    def start_service(self):
-        log.msg("Starting the ExampleService")
-        self.publisher = yield self.start_publisher(Publisher)
-        self.consumer = yield self.start_consumer(Consumer, self.publisher)
-    
-    def stop_service(self):
-        log.msg("Stopping the ExampleService")
-    
 
 class AmqpFactory(protocol.ReconnectingClientFactory):
     
-    protocol = AmqpProtocol
-    
-    def __init__(self, specfile, vhost, username, password, protocol=None):
+    def __init__(self, specfile, vhost, username, password, worker_class, **options):
         self.username = username
         self.password = password
         self.vhost = vhost
         self.spec = txamqp.spec.load(specfile)
         self.delegate = TwistedDelegate()
-        self.protocol = protocol or self.protocol
+        self.worker_class = worker_class
+        self.options = options
+        print 'options', options
     
     def buildProtocol(self, addr):
-        protocol = self.protocol(self.delegate, self.vhost, self.spec)
-        protocol.factory = self
-        self.p = protocol
+        worker = self.worker_class(self.delegate, self.vhost, self.spec)
+        worker.factory = self
+        self.worker = worker
         self.resetDelay()
-        return protocol
+        return worker
     
     def clientConnectionFailed(self, connector, reason):
         print "Connection failed."
-        self.p.stop_service()
+        self.worker.stopWorker()
         protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
     
     def clientConnectionLost(self, connector, reason):
         print "Client connection lost."
-        self.p.stop_service()
+        self.worker.stopWorker()
         protocol.ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
     
 
-class RichmondService(Service):
+class WorkerCreator(object):
     
-    def __init__(self, options):
-        self.options = options
+    def __init__(self, reactor, worker_class, *args, **kwargs):
+        self.reactor = reactor
+        self.args = args
+        self.kwargs = kwargs
+        self.kwargs.update({
+            'worker_class': worker_class
+        })
     
-    @inlineCallbacks
-    def startService(self):
-        log.msg("Starting RichmondService")
-        connection = yield self.connect_to_broker(
-            self.options['amqp-hostname'],
-            self.options['amqp-port'],
-            self.options['amqp-specfile'],
-            self.options['amqp-vhost'],
-            self.options['amqp-username'],
-            self.options['amqp-password']
-        )
-    
-    def stopService(self):
-        log.msg("Stopping RichmondService")
-    
-    def connect_to_broker(self, host, port, specfile, vhost, username, password):
-        service_class = self.options['service']
-        factory = AmqpFactory(specfile, vhost, username, password, service_class)
-        reactor.connectTCP(host, port, factory)
-    
-
-class RichmondServiceMaker(object):
-    implements(IServiceMaker, IPlugin)
-    tapname = "thoughts_plugin"
-    description = "Start a Richmond service"
-    options = Options
-    
-    def makeService(self, options):
-        return RichmondService(options)
-
-serviceMaker = RichmondServiceMaker()
+    def connectTCP(self, host, port, timeout=30, bindAddress=None):
+        factory = AmqpFactory(*self.args, **self.kwargs)
+        self.reactor.connectTCP(host, port, factory, timeout=timeout, bindAddress=bindAddress)
