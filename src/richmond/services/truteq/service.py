@@ -24,7 +24,8 @@ class USSDHandler(ssmi_service.SSMICallback):
         one intead. All incoming data are messages that need to be sent
         to TruTeq over USSD. Use `ssmi_client.send_ussd` to do that.
         """
-        if data['type'] == 'ussd':
+        # default to ussd
+        if data.get('type', 'ussd') == 'ussd':
             self.ssmi_client.send_ussd(
                 str(data['msisdn']),    # str everything because the SSMIClient
                 str(data['message']),   # isn't happy with Unicode
