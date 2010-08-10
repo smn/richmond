@@ -7,7 +7,7 @@ from alexandria.sessions.backend import DBBackend
 from alexandria.sessions.manager import SessionManager
 from alexandria.sessions.db import models
 from alexandria.sessions.db.views import _get_data
-from alexandria.dsl.core import MenuSystem, prompt, end, case
+from alexandria.dsl.core import MenuSystem, prompt, end, case#, sms
 from alexandria.dsl.validators import pick_one
 
 INDUSTRY_OPTIONS = (
@@ -26,13 +26,29 @@ EXPECTATIONS_OPTIONS = (
     'Not meeting my expectations',
 )
 
+CONTINUE_OR_QUIT_OPTIONS = (
+    'Continue',
+    'End the session'
+)
+
+QUIT_MESSAGE = \
+    'Thanks for taking part. You can view real-time statistics on ' + \
+    'the Praekelt screens, or by dialing back into the Star menu ' + \
+    ' system!'
+
+def sms(text):
+    while True:
+        ms, session = yield
+        ms
+
 class VumiDBClient(Client):
     
-    def __init__(self, msisdn, send_callback):
+    def __init__(self, msisdn, send_ussd_callback, send_sms_callback):
         self.id = msisdn
         self.session_manager = SessionManager(client=self, backend=DBBackend())
         self.session_manager.restore()
-        self.send_callback = send_callback
+        self.send_ussd_callback = send_ussd_callback
+        self.send_sms_callback = send_sms_callback
     
     def send(self, text, end_session=False):
         if end_session:
@@ -40,7 +56,10 @@ class VumiDBClient(Client):
             self.deactivate()
         else:
             reply_type = SessionType.existing
-        return self.send_callback(self.id, text, reply_type)
+        return self.send_ussd_callback(self.id, text, reply_type)
+    
+    def send_sms(self, text):
+        return self.send_sms_callback(self.id, text)
 
 def save_to_session(key, value):
     while True:
@@ -76,6 +95,16 @@ def returning_user(menu, session):
 def new_user(*args, **kwargs):
     return not returning_user(*args, **kwargs)
 
+def wants_to_quit(menu, session):
+    print session
+    check = session.get('continue_or_quit', False)
+    if check == '2':
+        # clean up for next time round
+        session['continue_or_quit'] = ''
+        return True
+    else:
+        return False
+
 class VumiConsumer(Consumer):
     
     """
@@ -85,9 +114,13 @@ class VumiConsumer(Consumer):
         case(
             (new_user, prompt('Welcome to the Praekelt Star menu system. ' +\
                                     'What is your first name?', save_as='name')),
-            (returning_user, prompt('Welcome back %(name)s!', 
+            (returning_user, prompt('Welcome back %(name)s! Continue to ' +\
+                                    'see the real-time statistics.', 
                                         parse=True,
-                                        options=('Continue',)))
+                                        options=CONTINUE_OR_QUIT_OPTIONS))
+        ),
+        case(
+            (wants_to_quit, end(QUIT_MESSAGE)),
         ),
         save_to_session('industry_stats', industry_stats),
         case(
@@ -97,7 +130,11 @@ class VumiConsumer(Consumer):
                                 validator=pick_one)),
             (returning_user, prompt("%(industry_stats)s", 
                                         parse=True,
-                                        options=('Continue',)))
+                                        save_as='continue_or_quit',
+                                        options=CONTINUE_OR_QUIT_OPTIONS))
+        ),
+        case(
+            (wants_to_quit, end(QUIT_MESSAGE)),
         ),
         save_to_session('expectations_stats', expectations_stats),
         case(
@@ -107,35 +144,45 @@ class VumiConsumer(Consumer):
                                 validator=pick_one)),
             (returning_user, prompt("%(expectations_stats)s", 
                                         parse=True, 
-                                        options=('Continue',)))
+                                        save_as='continue_or_quit',
+                                        options=CONTINUE_OR_QUIT_OPTIONS))
+        ),
+        case(
+            (wants_to_quit, end(QUIT_MESSAGE)),
         ),
         save_to_session('completed', True),
         # sms(
         #     'Hi %(name)s want to know more about Vumi and Star menus? ' + \
         #     'Visit http://www.praekelt.com'
         # ),
-        end('Thanks for taking part. You can view real-time statistics on ' + \
-            'the Praekelt screens, or by dialing back into the Star menu ' + \
-            ' system!')
+        end(QUIT_MESSAGE)
     )
     
     def new_ussd_session(self, msisdn, message):
-        client = VumiDBClient(msisdn, self.reply)
+        client = VumiDBClient(msisdn, self.reply, self.reply_with_sms)
         client.answer(str(message), self.menu)
     
     def existing_ussd_session(self, msisdn, message):
-        client = VumiDBClient(msisdn, self.reply)
+        client = VumiDBClient(msisdn, self.reply, self.reply_with_sms)
         client.answer(str(message), self.menu)
     
     def timed_out_ussd_session(self, msisdn, message):
         log.msg('%s timed out, removing client' % msisdn)
-        client = VumiDBClient(msisdn, self.reply)
+        client = VumiDBClient(msisdn, self.reply, self.reply_with_sms)
         client.deactivate()
     
     def end_ussd_session(self, msisdn, message):
         log.msg('%s ended the session, removing client' % msisdn)
-        client = VumiDBClient(msisdn, self.reply)
+        client = VumiDBClient(msisdn, self.reply, self.reply_with_sms)
         client.deactivate()
+    
+    def reply_with_sms(self, msisdn, message):
+        return self.publisher.send({
+            "type": "sms",
+            "msisdn": msisdn,
+            "message": message
+        })
+        
     
 
 class VumiUSSDWorker(PubSubWorker):

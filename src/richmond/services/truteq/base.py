@@ -24,6 +24,7 @@ class Consumer(worker.Consumer):
     
     def reply(self, msisdn, message, ussd_type):
         return self.publisher.send({
+            "type": "ussd",
             "msisdn": msisdn,
             "message": message,
             "ussd_type": ussd_type
