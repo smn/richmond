@@ -8,61 +8,22 @@ from alexandria.sessions.manager import SessionManager
 from alexandria.dsl.core import MenuSystem, prompt, end
 from alexandria.dsl.validators import pick_one
 
-class Backend(object):
-    """
-    An in memory backend, this should sometime be made a persistent backend
-    for the campaigns. Neither Richmond or Alexandria care what type of 
-    backend is used.
-    """
-    def __init__(self):
-        self.memory = {}
+class VumiDBClient(Client):
     
-    def get_client_id(self, client):
-        return "%(uuid)s-%(client_type)s" % client.uuid()
-    
-    def restore(self, client):
-        uuid = self.get_client_id(client)
-        state = self.memory.setdefault(uuid, {})
-        log.msg("restoring state of %s as %s" % (uuid, state))
-        return state
-    
-    def deactivate(self, client):
-        uuid = self.get_client_id(client)
-        log.msg("deactivating %s" % uuid)
-        del self.memory[uuid]
-    
-    def save(self, client, state):
-        uuid = self.get_client_id(client)
-        log.msg("saving state of %s as %s" % (uuid, state))
-        self.memory[uuid] = state
-        return state
-    
-
-class StatefulClient(Client):
-    """
-    A client for Alexandria that stores its data in the in memory backend. The
-    msisdn is used as a unique id to retrieve the client again from the 
-    storage. The reply callback links back to the Consumer's reply instance
-    which publishes to the queue.
-    
-    FIXME:  a publishing consumer? Confusing, this should be one PubSub class 
-            and all this logic should be in the Worker class, not in the 
-            consumer
-    """
-    def __init__(self, msisdn, reply_callback):
+    def __init__(self, msisdn, send_callback):
         self.id = msisdn
-        self.reply_callback = reply_callback
-        # self.session_manager = SessionManager(client=self, backend=Backend())
         self.session_manager = SessionManager(client=self, backend=DBBackend())
         self.session_manager.restore()
+        self.send_callback = send_callback
     
-    def send(self, message, end_of_session):
-        if end_of_session:
+    def send(self, text, end_session=False):
+        if end_session:
             reply_type = SessionType.end
+            self.deactivate()
         else:
             reply_type = SessionType.existing
-        self.reply_callback(self.id, message, reply_type)
-    
+        return self.send_callback(self.id, text, reply_type)
+
 
 class VumiConsumer(Consumer):
     
@@ -89,41 +50,23 @@ class VumiConsumer(Consumer):
         end('Thanks!')
     )
     
-    """
-    In memory storage of stateful clients
-    """
-    clients = {}
-    
-    def new_client(self, msisdn):
-        client = StatefulClient(msisdn, self.reply)
-        self.clients[msisdn] = client
-        return client
-    
-    def get_client(self, msisdn):
-        if msisdn in self.clients:
-            return self.clients[msisdn]
-        else:
-            return self.new_client(msisdn)
-    
-    def remove_client(self, msisdn):
-        if msisdn in self.clients:
-            del self.clients[msisdn]
-    
     def new_ussd_session(self, msisdn, message):
-        client = self.new_client(msisdn)
+        client = VumiDBClient(msisdn, self.reply)
         client.answer(str(message), self.menu)
     
     def existing_ussd_session(self, msisdn, message):
-        client = self.get_client(msisdn)
+        client = VumiDBClient(msisdn, self.reply)
         client.answer(str(message), self.menu)
     
     def timed_out_ussd_session(self, msisdn, message):
-        log.msg("%s timed out" % msisdn)
-        self.remove_client(msisdn)
+        log.msg('%s timed out, removing client' % msisdn)
+        client = VumiDBClient(msisdn, self.reply)
+        client.deactivate()
     
     def end_ussd_session(self, msisdn, message):
-        log.msg("%s ended session" % msisdn)
-        self.remove_client(msisdn)
+        log.msg('%s ended the session, removing client' % msisdn)
+        client = VumiDBClient(msisdn, self.reply)
+        client.deactivate()
     
 
 class VumiUSSDWorker(PubSubWorker):
