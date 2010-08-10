@@ -3,6 +3,7 @@ from richmond.services.worker import PubSubWorker
 from twisted.python import log
 
 from alexandria.client import Client
+from alexandria.sessions.backend import DBBackend
 from alexandria.sessions.manager import SessionManager
 from alexandria.dsl.core import MenuSystem, prompt, end
 from alexandria.dsl.validators import pick_one
@@ -51,7 +52,8 @@ class StatefulClient(Client):
     def __init__(self, msisdn, reply_callback):
         self.id = msisdn
         self.reply_callback = reply_callback
-        self.session_manager = SessionManager(client=self, backend=Backend())
+        # self.session_manager = SessionManager(client=self, backend=Backend())
+        self.session_manager = SessionManager(client=self, backend=DBBackend())
         self.session_manager.restore()
     
     def send(self, message, end_of_session):
