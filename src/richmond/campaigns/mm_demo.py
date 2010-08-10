@@ -85,7 +85,9 @@ class VumiConsumer(Consumer):
         case(
             (new_user, prompt('Welcome to the Praekelt Star menu system. ' +\
                                     'What is your first name?', save_as='name')),
-            (returning_user, prompt('Welcome back %(name)s', parse=True))
+            (returning_user, prompt('Welcome back %(name)s!', 
+                                        parse=True,
+                                        options=('Continue')))
         ),
         save_to_session('industry_stats', industry_stats),
         case(
