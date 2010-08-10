@@ -10,6 +10,33 @@ from alexandria.sessions.db.views import _get_data
 from alexandria.dsl.core import MenuSystem, prompt, end, case#, sms
 from alexandria.dsl.validators import pick_one
 
+"""
+Issues that have surfaced when developing this:
+
+1.  Richmond does work with different transports but using different 
+    transports in the same menu does not work. For example; sending out an SMS
+    in a USSD session. The menu items do not have access to the queue and
+    so cannot publish any message to a consumer.
+
+2.  We need a lazy evalation decorator somewhere. Right now I have to pass
+    callables to make sure that stuff isn't evaluated too soon.
+
+3.  Using the session for string substition is useful, but it's implementation
+    with the explicit `parse=True` is silly.
+
+4.  The case((check, response), ...) works great on a lowlevel but is far
+    too wordy for everyday use.
+
+5.  I suspect there should be two types of session storage, one operational 
+    for things like stack counters and one for the application for storing
+    things like responses to the questions. They should be able to be reset
+    apart from each other.
+
+6.  For a lot of the yield-ing I should probably be looking at something
+    like eventlet / greenlet / gevent
+
+"""
+
 INDUSTRY_OPTIONS = (
     'Marketing',
     'Industry',
@@ -34,12 +61,18 @@ CONTINUE_OR_QUIT_OPTIONS = (
 QUIT_MESSAGE = \
     'Thanks for taking part. You can view real-time statistics on ' + \
     'the Praekelt screens, or by dialing back into the Star menu ' + \
-    ' system!'
+    'system!'
 
 def sms(text):
+    """
+    Send an SMS to the current session's MSISDN.
+    Not working: see comment below
+    """
     while True:
         ms, session = yield
-        ms
+        # in it's current form this isn't going to work since
+        # these items don't have access to the queue and cannot
+        # publish anything.
 
 class VumiDBClient(Client):
     
@@ -53,7 +86,6 @@ class VumiDBClient(Client):
     def send(self, text, end_session=False):
         if end_session:
             reply_type = SessionType.end
-            self.deactivate()
         else:
             reply_type = SessionType.existing
         return self.send_ussd_callback(self.id, text, reply_type)
@@ -61,7 +93,11 @@ class VumiDBClient(Client):
     def send_sms(self, text):
         return self.send_sms_callback(self.id, text)
 
-def save_to_session(key, value):
+def persist(key, value, *args, **kwargs):
+    """
+    Save a key, value in the session. If value is a callable
+    then the result of value(*args, **kwargs) will be saved in the session
+    """
     while True:
         ms, session = yield
         if callable(value):
@@ -70,24 +106,25 @@ def save_to_session(key, value):
             session[key] = value
         yield False, False
 
-def industry_stats():
-    data = _get_data().get('industry', {})
+def calculate_stats(key, options):
+    """
+    Get the statistics for the given key from the session. Abuses the view
+    from alexandria to do the database calculation. Sorry, very ugly.
+    """
+    # get data
+    data = _get_data().get(key, {})
+    # calculate the total nr of entries
     total = float(sum(data.values()))
     if total:
-        return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
-                        for option in INDUSTRY_OPTIONS])
+        # return a list of key: % values
+        return "\n".join([
+            "%s: %.0f%%" % (
+                option, 
+                (data.get(option, 0) / total) * 100
+            ) for option in options
+        ])
     else:
         return "Not enough data yet"
-
-def expectations_stats():
-    data = _get_data().get('expectations', {})
-    total = float(sum(data.values()))
-    if total:
-        return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
-                        for option in EXPECTATIONS_OPTIONS])
-    else:
-        return "Not enough data yet"
-    
 
 def returning_user(menu, session):
     return session.get('completed', False)
@@ -96,14 +133,8 @@ def new_user(*args, **kwargs):
     return not returning_user(*args, **kwargs)
 
 def wants_to_quit(menu, session):
-    print session
-    check = session.get('continue_or_quit', False)
-    if check == '2':
-        # clean up for next time round
-        session['continue_or_quit'] = ''
-        return True
-    else:
-        return False
+    # 2. End the session, check if that was answered
+    return session.pop('continue_or_quit', None) == '2'
 
 class VumiConsumer(Consumer):
     
@@ -122,7 +153,7 @@ class VumiConsumer(Consumer):
         case(
             (wants_to_quit, end(QUIT_MESSAGE)),
         ),
-        save_to_session('industry_stats', industry_stats),
+        persist('industry_stats', calculate_stats, 'industry', INDUSTRY_OPTIONS),
         case(
             (new_user, prompt('What industry are you from?', 
                                 options=INDUSTRY_OPTIONS, 
@@ -136,7 +167,7 @@ class VumiConsumer(Consumer):
         case(
             (wants_to_quit, end(QUIT_MESSAGE)),
         ),
-        save_to_session('expectations_stats', expectations_stats),
+        persist('expectations_stats', calculate_stats, 'expectations', EXPECTATIONS_OPTIONS),
         case(
             (new_user, prompt('How are you finding the conference?', 
                                 options=EXPECTATIONS_OPTIONS, 
@@ -150,7 +181,7 @@ class VumiConsumer(Consumer):
         case(
             (wants_to_quit, end(QUIT_MESSAGE)),
         ),
-        save_to_session('completed', True),
+        persist('completed', True),
         # sms(
         #     'Hi %(name)s want to know more about Vumi and Star menus? ' + \
         #     'Visit http://www.praekelt.com'
