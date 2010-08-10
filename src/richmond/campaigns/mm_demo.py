@@ -87,7 +87,7 @@ class VumiConsumer(Consumer):
                                     'What is your first name?', save_as='name')),
             (returning_user, prompt('Welcome back %(name)s!', 
                                         parse=True,
-                                        options=('Continue')))
+                                        options=('Continue',)))
         ),
         save_to_session('industry_stats', industry_stats),
         case(
