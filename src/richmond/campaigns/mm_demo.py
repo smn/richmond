@@ -52,16 +52,22 @@ def save_to_session(key, value):
         yield False, False
 
 def industry_stats():
-    data = _get_data()['industry']
+    data = _get_data().get('industry', {})
     total = float(sum(data.values()))
-    return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
+    if total:
+        return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
                         for option in INDUSTRY_OPTIONS])
+    else:
+        return "Not enough data yet"
 
 def expectations_stats():
-    data = _get_data()['expectations']
+    data = _get_data().get('expectations', {})
     total = float(sum(data.values()))
-    return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
+    if total:
+        return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
                         for option in EXPECTATIONS_OPTIONS])
+    else:
+        return "Not enough data yet"
     
 
 def returning_user(menu, session):
