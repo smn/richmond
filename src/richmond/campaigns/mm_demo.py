@@ -6,8 +6,25 @@ from alexandria.client import Client
 from alexandria.sessions.backend import DBBackend
 from alexandria.sessions.manager import SessionManager
 from alexandria.sessions.db import models
+from alexandria.sessions.db.views import _get_data
 from alexandria.dsl.core import MenuSystem, prompt, end, case
 from alexandria.dsl.validators import pick_one
+
+INDUSTRY_OPTIONS = (
+    'Marketing',
+    'Industry',
+    'Retail',
+    'Financial/Banking',
+    'IT/Technology',
+    'Media',
+    'Other'
+)
+
+EXPECTATIONS_OPTIONS = (
+    'Meeting my expectations',
+    'Exceeding my expectations',
+    'Not meeting my expectations',
+)
 
 class VumiDBClient(Client):
     
@@ -28,14 +45,24 @@ class VumiDBClient(Client):
 def save_to_session(key, value):
     while True:
         ms, session = yield
-        session[key] = value
+        if callable(value):
+            session[key] = value()
+        else:
+            session[key] = value
         yield False, False
 
 def industry_stats():
-    return "These are the industry stats!"
+    data = _get_data()['industry']
+    total = float(sum(data.values()))
+    return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
+                        for option in INDUSTRY_OPTIONS])
 
 def expectations_stats():
-    return "These are the expectations!"
+    data = _get_data()['expectations']
+    total = float(sum(data.values()))
+    return "\n".join(["%s: %.0f%%" % (option, (data.get(option, 0) / total) * 100) 
+                        for option in EXPECTATIONS_OPTIONS])
+    
 
 def returning_user(menu, session):
     return session.get('completed', False)
@@ -52,27 +79,27 @@ class VumiConsumer(Consumer):
         case(
             (new_user, prompt('Welcome to the Praekelt Star menu system. ' +\
                                     'What is your first name?', save_as='name')),
-            (returning_user, prompt('Welcome back %(name)s'))
+            (returning_user, prompt('Welcome back %(name)s', parse=True))
         ),
+        save_to_session('industry_stats', industry_stats),
         case(
-            (new_user, prompt('What industry are you from?', options=(
-                'Marketing',
-                'Industry',
-                'Retail',
-                'Financial/Banking',
-                'IT/Technology',
-                'Media',
-                'Other'
-            ), save_as='industry', validator=pick_one)),
-            (returning_user, prompt(industry_stats(), options=('Continue',)))
+            (new_user, prompt('What industry are you from?', 
+                                options=INDUSTRY_OPTIONS, 
+                                save_as='industry', 
+                                validator=pick_one)),
+            (returning_user, prompt("%(industry_stats)s", 
+                                        parse=True,
+                                        options=('Continue',)))
         ),
+        save_to_session('expectations_stats', expectations_stats),
         case(
-            (new_user, prompt('How are you finding the conference?', options=(
-                'Meeting my expectations',
-                'Exceeding my expectations',
-                'Not meeting my expectations',
-            ), save_as='expectations', validator=pick_one)),
-            (returning_user, prompt(expectations_stats(), options=('Continue',)))
+            (new_user, prompt('How are you finding the conference?', 
+                                options=EXPECTATIONS_OPTIONS, 
+                                save_as='expectations', 
+                                validator=pick_one)),
+            (returning_user, prompt("%(expectations_stats)s", 
+                                        parse=True, 
+                                        options=('Continue',)))
         ),
         save_to_session('completed', True),
         # sms(
