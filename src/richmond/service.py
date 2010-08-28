@@ -164,16 +164,18 @@ class Publisher(object):
         log.msg("Started the publisher")
         self.channel = channel
     
-    def publish(self, message):
-        self.channel.basic_publish(exchange=self.exchange_name, 
+    def publish(self, message, **kwargs):
+        exchange = kwargs.get('exchange_name') or self.exchange_name
+        routing_key = kwargs.get('routing_key') or self.routing_key
+        self.channel.basic_publish(exchange=exchange_name, 
                                         content=message, 
-                                        routing_key=self.routing_key)
+                                        routing_key=routing_key)
     
-    def publish_json(self, data):
+    def publish_json(self, data, **kwargs):
         """helper method"""
         message = Content(json.dumps(data))
-        message['delivery mode'] = self.delivery_mode
-        return self.publish(message)
+        message['delivery mode'] = kwargs.pop('delivery_mode', self.delivery_mode)
+        return self.publish(message, **kwargs)
 
 
 class AmqpFactory(protocol.ReconnectingClientFactory):
