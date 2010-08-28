@@ -145,6 +145,7 @@ class Consumer(object):
         self.ack(message)
     
     def consume_json(self, dictionary):
+        "helper method"
         log.msg("Received dict: %s" % dictionary)
     
     def ack(self, message):
@@ -189,6 +190,7 @@ class AmqpFactory(protocol.ReconnectingClientFactory):
     def buildProtocol(self, addr):
         worker = self.worker_class(self.delegate, self.vhost, self.spec)
         worker.factory = self
+        worker.options = self.options
         self.worker = worker
         self.resetDelay()
         return worker
@@ -211,6 +213,7 @@ class WorkerCreator(object):
     
     def __init__(self, worker_class, *args, **kwargs):
         self.args = args
+        self.options = kwargs
         self.kwargs = kwargs
         # FIXME: shouldn't be needed
         self.kwargs.update({
