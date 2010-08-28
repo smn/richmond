@@ -1,14 +1,18 @@
 from twisted.python import log, usage
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
-from twisted.internet import protocol
+from twisted.internet import protocol, reactor
 from txamqp.client import TwistedDelegate
 from txamqp.content import Content
 from txamqp.protocol import AMQClient
+from richmond.errors import RichmondError
 import txamqp
 import json
 import sys
 
 class Options(usage.Options):
+    """
+    Default options for all workers created
+    """
     optParameters = [
         ["hostname", None, "127.0.0.1", "AMQP broker"],
         ["port", None, 5672, "AMQP port", int],
@@ -20,17 +24,32 @@ class Options(usage.Options):
 
 
 class Worker(AMQClient):
-    
+    """
+    The Worker is responsible for starting consumers & publishers
+    as needed.
+    """
     def connectionMade(self):
+        # We've got a connection to the AMQP server, now authenticate
         AMQClient.connectionMade(self)
         deferred = self.authenticate(self.factory.username, self.factory.password)
+        # continue if authentication was successful
         deferred.addCallback(self.authenticated)
+        # otherwise log the error
         deferred.addErrback(log.err)
     
     @inlineCallbacks
     def authenticated(self, ignore):
+        # authentication was successful
         log.msg("Got an authenticated connection")
+        # we're good to go so start the worker
         yield self.startWorker()
+    
+    @inlineCallbacks
+    def startWorker(self):
+        # I hate camelCasing method but since Twisted has it as a
+        # standard I voting to stick with it
+        raise RichmondError, "You need to subclass Worker and its " \
+                             "startWorker method"
     
     @inlineCallbacks
     def get_channel(self, channel_id=None):
@@ -45,6 +64,11 @@ class Worker(AMQClient):
         returnValue(channel)
     
     def get_new_channel_id(self):
+        """
+        AMQClient keeps track of channels in a dictionary. The
+        channel ids are the keys, get the highest number and up it
+        or just return zero for the first channel
+        """
         return (max(self.channels) + 1) if self.channels else 0
     
     @inlineCallbacks
@@ -52,10 +76,10 @@ class Worker(AMQClient):
         channel = yield self.get_channel()
         consumer = klass(*args, **kwargs)
         
+        # get the details for AMQP
         exchange_name = consumer.exchange_name
         exchange_type = consumer.exchange_type
         durable = consumer.durable
-        
         queue_name = consumer.queue_name
         routing_key = consumer.routing_key
         
@@ -71,14 +95,21 @@ class Worker(AMQClient):
         # register the consumer
         reply = yield channel.basic_consume(queue=queue_name)
         queue = yield self.queue(reply.consumer_tag)
+        # start consuming! nom nom nom
         consumer.start(channel, queue)
+        # return the newly created & consuming consumer
         returnValue(consumer)
     
     @inlineCallbacks
     def start_publisher(self, klass, *args, **kwargs):
+        # much more braindead than start_consumer
+        # get a channel
         channel = yield self.get_channel()
+        # start the publisher
         publisher = klass(*args, **kwargs)
+        # start!
         yield publisher.start(channel)
+        # return the publisher
         returnValue(publisher)
     
 
@@ -91,10 +122,6 @@ class Consumer(object):
     queue_name = "queue"
     routing_key = "routing_key"
     
-    def __init__(self):
-        """Start the consumer"""
-        pass
-    
     @inlineCallbacks
     def start(self, channel, queue):
         log.msg("Started consumer with publisher: %s" % self.publisher)
@@ -106,14 +133,14 @@ class Consumer(object):
             try:
                 while True:
                     message = yield self.queue.get()
-                    self.raw_consume(message)
+                    self.consume(message)
             except txamqp.queue.Closed, e:
-                log.err("Queue has closed: %s" % e)
+                log.err("Queue has closed", e)
         read_messages()
         yield None
         returnValue(self)
     
-    def raw_consume(self, message):
+    def consume(self, message):
         self.consume_json(json.loads(message.content.body))
         self.ack(message)
     
@@ -136,12 +163,16 @@ class Publisher(object):
         log.msg("Started the publisher")
         self.channel = channel
     
-    def publish(self, data):
-        message = Content(json.dumps(data))
-        message['delivery mode'] = self.delivery_mode
+    def publish(self, message):
         self.channel.basic_publish(exchange=self.exchange_name, 
                                         content=message, 
                                         routing_key=self.routing_key)
+    
+    def publish_json(self, data):
+        """helper method"""
+        message = Content(json.dumps(data))
+        message['delivery mode'] = self.delivery_mode
+        return self.publish(message)
 
 
 class AmqpFactory(protocol.ReconnectingClientFactory):
@@ -154,7 +185,6 @@ class AmqpFactory(protocol.ReconnectingClientFactory):
         self.delegate = TwistedDelegate()
         self.worker_class = worker_class
         self.options = options
-        print 'options', options
     
     def buildProtocol(self, addr):
         worker = self.worker_class(self.delegate, self.vhost, self.spec)
@@ -164,26 +194,29 @@ class AmqpFactory(protocol.ReconnectingClientFactory):
         return worker
     
     def clientConnectionFailed(self, connector, reason):
-        print "Connection failed."
+        log.err("Connection failed.", reason)
         self.worker.stopWorker()
         protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
     
     def clientConnectionLost(self, connector, reason):
-        print "Client connection lost."
+        log.err("Client connection lost.", reason)
         self.worker.stopWorker()
         protocol.ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
     
 
 class WorkerCreator(object):
+    """
+    Creates workers
+    """
     
-    def __init__(self, reactor, worker_class, *args, **kwargs):
-        self.reactor = reactor
+    def __init__(self, worker_class, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+        # FIXME: shouldn't be needed
         self.kwargs.update({
             'worker_class': worker_class
         })
     
     def connectTCP(self, host, port, timeout=30, bindAddress=None):
         factory = AmqpFactory(*self.args, **self.kwargs)
-        self.reactor.connectTCP(host, port, factory, timeout=timeout, bindAddress=bindAddress)
+        reactor.connectTCP(host, port, factory, timeout=timeout, bindAddress=bindAddress)
