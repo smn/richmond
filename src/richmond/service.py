@@ -124,7 +124,6 @@ class Consumer(object):
     
     @inlineCallbacks
     def start(self, channel, queue):
-        log.msg("Started consumer with publisher: %s" % self.publisher)
         self.channel = channel
         self.queue = queue
         @inlineCallbacks
@@ -192,7 +191,7 @@ class AmqpFactory(protocol.ReconnectingClientFactory):
     def buildProtocol(self, addr):
         worker = self.worker_class(self.delegate, self.vhost, self.spec)
         worker.factory = self
-        worker.options = self.options.get('config', {})
+        worker.config = self.options.get('config', {})
         self.worker = worker
         self.resetDelay()
         return worker
