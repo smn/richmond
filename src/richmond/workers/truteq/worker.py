@@ -8,6 +8,10 @@ from richmond.workers.truteq.util import RichmondSSMIFactory, SessionType, ussd_
 
 
 class TruTeqConsumer(Consumer):
+    """
+    This consumer consumes all incoming USSD messages on the *120*663*79#
+    shortcode in a campaign specific queue.
+    """
     exchange_name = "richmond.ussd"
     exchange_type = "topic"
     durable = False
