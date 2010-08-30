@@ -1,3 +1,4 @@
+import yaml
 from zope.interface import implements
 from twisted.python import log
 from twisted.application.service import IServiceMaker, Service
@@ -26,6 +27,15 @@ class RichmondService(Service):
         worker_class_name = self.options.pop("worker_class")
         if not worker_class_name:
             raise RichmondError, "please specify --worker_class"
+        
+        # load the config file if specified
+        config_file = self.options.pop('config')
+        if config_file:
+            with file(config_file, 'r') as stream:
+                self.options.update({
+                    'config': yaml.load(stream)
+                })
+        
         worker_class = load_class_by_string(worker_class_name)
         creator = WorkerCreator(worker_class, **self.options)
         # after that you connect it to the AMQP server
@@ -41,6 +51,7 @@ class RichmondService(Service):
 class BasicSet(Options):
     optParameters = Options.optParameters + [
         ["worker_class", None, None, "class of a worker to start"],
+        ["config", None, None, "YAML config file to load"],
     ]
 
 # This create the service, runnable on command line with twistd

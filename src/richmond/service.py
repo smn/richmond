@@ -165,7 +165,7 @@ class Publisher(object):
         self.channel = channel
     
     def publish(self, message, **kwargs):
-        exchange = kwargs.get('exchange_name') or self.exchange_name
+        exchange_name = kwargs.get('exchange_name') or self.exchange_name
         routing_key = kwargs.get('routing_key') or self.routing_key
         self.channel.basic_publish(exchange=exchange_name, 
                                         content=message, 
@@ -192,7 +192,7 @@ class AmqpFactory(protocol.ReconnectingClientFactory):
     def buildProtocol(self, addr):
         worker = self.worker_class(self.delegate, self.vhost, self.spec)
         worker.factory = self
-        worker.options = self.options
+        worker.options = self.options.get('config', {})
         self.worker = worker
         self.resetDelay()
         return worker

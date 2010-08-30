@@ -29,8 +29,7 @@ class ExampleWorker(Worker):
     # See: http://twistedmatrix.com/documents/10.0.0/api/twisted.internet.defer.html#inlineCallbacks
     @inlineCallbacks
     def startWorker(self):
-        log.msg("Starting the ExampleWorker")
-        log.msg("These were my command line options: %s" % self.options)
+        log.msg("Starting the ExampleWorker with options: %s" % self.options)
         # create the publisher
         self.publisher = yield self.start_publisher(ExamplePublisher)
         # when it's done, create the consumer and pass it the publisher
