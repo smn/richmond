@@ -28,20 +28,12 @@ class Worker(AMQClient):
     The Worker is responsible for starting consumers & publishers
     as needed.
     """
-    def connectionMade(self):
-        # We've got a connection to the AMQP server, now authenticate
-        AMQClient.connectionMade(self)
-        deferred = self.authenticate(self.factory.username, self.factory.password)
-        # continue if authentication was successful
-        deferred.addCallback(self.authenticated)
-        # otherwise log the error
-        deferred.addErrback(log.err)
-    
     @inlineCallbacks
-    def authenticated(self, ignore):
+    def connectionMade(self):
+        AMQClient.connectionMade(self)
+        yield self.authenticate(self.factory.username, self.factory.password)
         # authentication was successful
         log.msg("Got an authenticated connection")
-        # we're good to go so start the worker
         yield self.startWorker()
     
     @inlineCallbacks

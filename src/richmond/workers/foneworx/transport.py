@@ -45,7 +45,7 @@ class SMSTransport(Worker):
         log.msg("Starting the SMSTransport")
         
         self.last_polled_at = None
-
+        
         username = self.config.pop('username')
         password = self.config.pop('password')
         host = self.config.pop("host")
