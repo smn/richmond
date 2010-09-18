@@ -1,6 +1,6 @@
 zope.interface
 carrot==0.10.4
-celery==1.0.5
+celery==1.0.6
 twisted==10.0.0
 txamqp==0.3
 Django==1.2
