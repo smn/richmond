@@ -17,6 +17,7 @@ from alexandria.dsl.validators import pick_one
 PHONE_OPTIONS = (
     'Nokia',
     'iPhone',
+    'Blackberry',
     'Samsung',
     'Android',
     'Other',
@@ -30,11 +31,13 @@ TECHNOLOGY_OPTIONS = (
     'Web',
 )
 
-MOBILE_PENETRATION_OPTIONS = (
-    '10%',
-    '20%',
-    '70%',
-    '100%',
+USEFUL_OPTIONS = (
+    'Banking',
+    'Health',
+    'Education',
+    'Security',
+    'Marketing',
+    'Entertainment'
 )
 
 CONTINUE_OR_QUIT_OPTIONS = (
@@ -175,13 +178,13 @@ class VumiConsumer(Consumer):
         case(
             (wants_to_quit, end(QUIT_MESSAGE)),
         ),
-        persist('penetration_stats', calculate_stats, 'penetration', MOBILE_PENETRATION_OPTIONS),
+        persist('useful_stats', calculate_stats, 'useful', USEFUL_OPTIONS),
         case(
-            (new_user, prompt('What is the mobile penetration in SA?', 
-                                options=MOBILE_PENETRATION_OPTIONS, 
-                                save_as='penetration', 
+            (new_user, prompt('What is the most useful application of mobile technology for lower income markets?', 
+                                options=USEFUL_OPTIONS, 
+                                save_as='useful', 
                                 validator=pick_one)),
-            (returning_user, prompt("%(penetration)s", 
+            (returning_user, prompt("%(useful)s", 
                                         parse=True, 
                                         save_as='continue_or_quit',
                                         options=CONTINUE_OR_QUIT_OPTIONS))
