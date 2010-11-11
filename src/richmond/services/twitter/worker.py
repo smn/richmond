@@ -3,7 +3,7 @@ from richmond.webapp.api.utils import callback
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
 from twittytwister import twitter
-import pycurl
+import pycurl, json
 from cStringIO import StringIO
 
 COUCH_DB_URL = 'http://localhost:5984/twitter'
@@ -38,6 +38,13 @@ def post_to_couchdb(json):
         return (False, e)
 
 
+def dump_to_console(string):
+    data = json.loads(string)
+    log.msg(
+        "%s said: %s"
+        % (data.get('user', {}).get('name','Unknown'), data['text'])
+    ) 
+
 class Consumer(worker.Consumer):
     exchange_name = 'richmond'
     exchange_type = 'direct'
@@ -48,9 +55,11 @@ class Consumer(worker.Consumer):
         return [(str(key), str(value)) for key,value in list_of_key_values]
     
     def consume_data(self, message):
-        success, response = post_to_couchdb(message.content.body)
-        if success:
-            self.ack(message)
+        # success, response = post_to_couchdb(message.content.body)
+        # if success:
+            # self.ack(message)
+        dump_to_console(message.content.body)
+        self.ack(message)
     
     
 class TwitterWorker(base.RichmondService):

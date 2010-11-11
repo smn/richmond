@@ -61,7 +61,6 @@ class AMQPConsumer(object):
             log.msg("Consumer starting...")
             try:
                 while True:
-                    log.msg("Waiting for messages")
                     message = yield self.queue.get()
                     self.consume_data(message)
             except queue.Closed, e:
