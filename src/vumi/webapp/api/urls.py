@@ -1,10 +1,10 @@
 from django.conf.urls.defaults import *
 from piston.resource import Resource
 from piston.authentication import HttpBasicAuthentication
-from richmond.webapp.api import handlers
-from richmond.webapp.api import views
+from vumi.webapp.api import handlers
+from vumi.webapp.api import views
 
-ad = {'authentication': HttpBasicAuthentication(realm="Richmond")}
+ad = {'authentication': HttpBasicAuthentication(realm="Vumi")}
 url_callback_resource = Resource(handler=handlers.URLCallbackHandler, **ad)
 conversation_resource = Resource(handler=handlers.ConversationHandler, **ad)
 
@@ -20,15 +20,15 @@ urlpatterns = patterns('',
 # gateways
 urlpatterns += patterns('',
     (r'^sms/clickatell/', 
-        include('richmond.webapp.api.gateways.clickatell.urls', 
+        include('vumi.webapp.api.gateways.clickatell.urls', 
                     namespace='clickatell')),
     (r'^sms/opera/', 
-        include('richmond.webapp.api.gateways.opera.urls', 
+        include('vumi.webapp.api.gateways.opera.urls', 
                     namespace='opera')),
     (r'^sms/e-scape/', 
-        include('richmond.webapp.api.gateways.e_scape.urls', 
+        include('vumi.webapp.api.gateways.e_scape.urls', 
                     namespace='e-scape')),
     (r'^sms/techsys/',
-        include('richmond.webapp.api.gateways.techsys.urls',
+        include('vumi.webapp.api.gateways.techsys.urls',
                     namespace='techsys')),
 )

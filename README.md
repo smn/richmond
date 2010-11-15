@@ -1,9 +1,7 @@
-Richmond
+Vumi
 ========
 
 PubSub platform for connecting online messaging services such as SMS and USSD to a horizontally scalable backend of workers.
-
-If you're wondering about the name. Apparently Richmond has is a great city for commuters, few traffic problems. Seemed like a good name for a high-traffic message bus application.
 
 Getting started
 ---------------
@@ -18,18 +16,18 @@ RabbitMQ will automatically assign a node name for you. For my network that does
 
 Make sure you have configured your login credentials & virtual host stuff in RabbitMQ. This is the minimal stuff for this to work 'out of the box':
 
-    $ rabbitmqctl -n rabbit@localhost add_user richmond richmond
-    Creating user "richmond" ...
+    $ rabbitmqctl -n rabbit@localhost add_user vumi vumi
+    Creating user "vumi" ...
     ...done.
-    $ rabbitmqctl -n rabbit@localhost add_vhost /richmond
-    Creating vhost "richmond" ...
+    $ rabbitmqctl -n rabbit@localhost add_vhost /vumi
+    Creating vhost "vumi" ...
     ...done.
-    $ rabbitmqctl -n rabbit@localhost set_permissions -p /richmond richmond \
+    $ rabbitmqctl -n rabbit@localhost set_permissions -p /vumi vumi \
         '.*' '.*' '.*'
-    Setting permissions for user "richmond" in vhost "richmond" ...
+    Setting permissions for user "vumi" in vhost "vumi" ...
     ...done.
  
-That last line gives the user 'richmond' on virtual host 'richmond' configure, read & write access to all resources that match those three regular expressions. Which, in this case, matches all resources in the vhost.
+That last line gives the user 'vumi' on virtual host 'vumi' configure, read & write access to all resources that match those three regular expressions. Which, in this case, matches all resources in the vhost.
 
 This project uses [virtualenv][virtualenv] and [pip][pip] to to create a sandbox and manage the required libraries at the required versions. Make sure you have both installed.
 
@@ -47,43 +45,43 @@ Install the required libraries with pip into the virtual environment. They're pu
 
     $ pip -E ./ve/ install -r config/requirements.pip
  
-Running Richmond
+Running Vumi
 ----------------
 
-Richmond is implemented using a [Pub/Sub][pubsub] design using the [Competing Consumer pattern][competing consumers]. 
+Vumi is implemented using a [Pub/Sub][pubsub] design using the [Competing Consumer pattern][competing consumers]. 
 
-Richmond is started as a `richmond_service` plugin for Twisted.
+Vumi is started as a `vumi_service` plugin for Twisted.
 
-Every Richmond services connects to RabbitMQ and allows for both consuming and publishing of messages. Richmond allows for connecting incoming and outoing messages to a backend of workers.
+Every Vumi services connects to RabbitMQ and allows for both consuming and publishing of messages. Vumi allows for connecting incoming and outoing messages to a backend of workers.
 
-Richmond currently has a TruTeq service that allows for receiving and sending of USSD messages over TruTeq's SSMI protocol. The TruTeq service connects to the SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
+Vumi currently has a TruTeq service that allows for receiving and sending of USSD messages over TruTeq's SSMI protocol. The TruTeq service connects to the SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
 
 The worker reads all incoming JSON objects on the receive queue and publishes a response back to the send queue for the TruTeq service to publish over SSMI.
 
 Make sure you update the configuration file in `config/truteq.cfg` and start the broker:
 
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.service.pid -n \     
-        richmond_service \
-        --service=richmond.services.truteq.service.USSDService \
+    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.service.pid -n \     
+        vumi_service \
+        --service=vumi.services.truteq.service.USSDService \
         --config=config/truteq.cfg
     ...
  
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.worker.1.pid -n \
-        richmond_service \
-        --service richmond.campaigns.vumi.VumiUSSDWorker \
+    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.worker.1.pid -n \
+        vumi_service \
+        --service vumi.campaigns.vumi.VumiUSSDWorker \
         --config=config/truteq.cfg
     ...
 
-The worker's --service/-s option allows you to specify a class that subclasses `richmond.services.base.RichmondService`.
+The worker's --service/-s option allows you to specify a class that subclasses `vumi.services.base.VumiService`.
 
 Remove the `-n` option to have `twistd` run in the background. The `--pidfile` option isn't necessary, `twistd` will use 'twistd.pid' by default. However, since we could have multiple brokers and workers running at the same time on the same machine it is good to be explicit since `twistd` will assume an instance is already running if 'twistd.pid' already exists.
 
 Creating a custom worker
 ------------------------
 
-We'll create a worker that responds to USSD json objects. We'll subclass the `richmond.services.worker.PubSubWorker`. Workers should always start a queue consumer and a queue publisher. For our example it should start a publisher for publishing outgoing USSD messages to the TruTeq service and it should start a consumer for receiving incoming USSD messages from the TruTeq service.
+We'll create a worker that responds to USSD json objects. We'll subclass the `vumi.services.worker.PubSubWorker`. Workers should always start a queue consumer and a queue publisher. For our example it should start a publisher for publishing outgoing USSD messages to the TruTeq service and it should start a consumer for receiving incoming USSD messages from the TruTeq service.
 
 A basic TruTeq consumer is provided and it provides the following functions.
 They're called for each of the relevant messages that arrive over the queue.
@@ -95,8 +93,8 @@ They're called for each of the relevant messages that arrive over the queue.
 
 This is what the code for a consumer for TruTeq would look like:
 
-    from richmond.services.truteq.base import Publisher, Consumer, SessionType
-    from richmond.services.worker import PubSubWorker
+    from vumi.services.truteq.base import Publisher, Consumer, SessionType
+    from vumi.services.worker import PubSubWorker
     from twisted.python import log
 
     class EchoConsumer(Consumer):
@@ -129,9 +127,9 @@ This is what the code for a consumer for TruTeq would look like:
 Start the worker:
 
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.richmond.truteq.worker.2.pid -n \
-        richmond_service \
-        --service=richmond.campaigns.example.USSDWorker
+    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.worker.2.pid -n \
+        vumi_service \
+        --service=vumi.campaigns.example.USSDWorker
         --config=config/truteq.conf
     ...
 
@@ -139,7 +137,7 @@ Start the worker:
 Running the Webapp / API
 ------------------------
 
-The webapp is a regular Django application. Before you start make sure the `DATABASE` settings in `src/richmond/webapp/settings.py` are up to date. `Richmond` is being developed with `PostgreSQL` as the default backend for the Django ORM but this isn't a requirement.
+The webapp is a regular Django application. Before you start make sure the `DATABASE` settings in `src/vumi/webapp/settings.py` are up to date. `Vumi` is being developed with `PostgreSQL` as the default backend for the Django ORM but this isn't a requirement.
 
 For development start it within the virtual environment:
 
@@ -149,16 +147,16 @@ For development start it within the virtual environment:
     (ve)$ ./manage.py runserver
     ...
 
-For development it sometimes is handy to have Celery run in eager mode. In eager mode, tasks avoids the queue entirely and are processed immediately in the main process. Do this by settings the environment variable 'RICHMOND_SKIP_QUEUE'
+For development it sometimes is handy to have Celery run in eager mode. In eager mode, tasks avoids the queue entirely and are processed immediately in the main process. Do this by settings the environment variable 'VUMI_SKIP_QUEUE'
 
-    (ve)$ RICHMOND_SKIP_QUEUE=True ./manage.py runserver
+    (ve)$ VUMI_SKIP_QUEUE=True ./manage.py runserver
 
 This is specified in the `settings.py` file, if so desired, you can also default it to `DEBUG` so that when `DEBUG=True` the queue will always be skipped.
 
-When running in production start it with the `twistd` plugin `richmond_webapp`
+When running in production start it with the `twistd` plugin `vumi_webapp`
  
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/richmond.webapp.pid -n richmond_webapp
+    (ve)$ twistd --pidfile=tmp/pids/vumi.webapp.pid -n vumi_webapp
 
 Run the tests for the webapp API with `./manage.py` as well:
 
@@ -384,14 +382,14 @@ There are two types of callbacks defined. These are `sms_received` and `sms_rece
         "id": 4
     }
     
-The next time an SMS is received or a SMS receipt is delivered, Richmond will post the data to the URLs specified.
+The next time an SMS is received or a SMS receipt is delivered, Vumi will post the data to the URLs specified.
 
 Accepting delivery receipts from the transports
 -----------------------------------------------
 
 Both [Clickatell][clickatell] and [Opera][opera] support notification of an SMS being delivered. In the general configuration areas of both sites there is an option where a URL callback can be specified. Clickatell or Opera will then post the delivery report to that URL.
 
-Richmond will accept delivery reports from both:
+Vumi will accept delivery reports from both:
 
 For [Clickatell][clickatell]:
 
@@ -404,7 +402,7 @@ For [Opera][opera]:
 Accepting inbound SMS from the transports
 -----------------------------------------
 
-Like the SMS delivery reports, both [Opera][opera] and [Clickatell][clickatell] will forward incoming SMSs to Richmond. 
+Like the SMS delivery reports, both [Opera][opera] and [Clickatell][clickatell] will forward incoming SMSs to Vumi. 
 
 For Clickatell the URL is:
 
@@ -419,7 +417,7 @@ Note the XML suffix on the URL. The resource returns XML whereas Clickatell retu
 Webapp Workers
 --------------
 
-Richmond uses [Celery][celery], the distributed task queue. The main Django process only registers when an SMS is received,sent or when a delivery report is received. The real work is done by the Celery workers.
+Vumi uses [Celery][celery], the distributed task queue. The main Django process only registers when an SMS is received,sent or when a delivery report is received. The real work is done by the Celery workers.
 
 Start the Celery worker via `manage.py`:
 

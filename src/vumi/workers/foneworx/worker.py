@@ -3,11 +3,11 @@ from twisted.python.log import logging
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet import reactor
 
-from richmond.service import Worker, Consumer, Publisher
+from vumi.service import Worker, Consumer, Publisher
 
 
 class FoneworxConsumer(Consumer):
-    exchange_name = "richmond.sms"
+    exchange_name = "vumi.sms"
     exchange_type = "topic"
     durable = False
     queue_name = "sms.foneworx.test_campaign"
@@ -27,7 +27,7 @@ class FoneworxConsumer(Consumer):
     
 
 class FoneworxPublisher(Publisher):
-    exchange_name = "richmond.sms"
+    exchange_name = "vumi.sms"
     exchange_type = "topic"             # -> route based on pattern matching
     routing_key = 'sms.foneworx.test_campaign'
     durable = False                     # -> not created at boot

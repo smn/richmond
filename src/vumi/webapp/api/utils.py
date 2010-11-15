@@ -25,7 +25,7 @@ def model_to_tuples(instance, exclude=[]):
     
     >>> from django.db import models
     >>> class TestModel(models.Model):
-    ...     __module__ = 'richmond.webapp.api.models'
+    ...     __module__ = 'vumi.webapp.api.models'
     ...     integer = models.IntegerField(blank=True, null=True, default=1)
     ...     _float = models.FloatField(default=1.0)
     ...     created_at = models.DateTimeField(blank=True, auto_now_add=True)
@@ -65,7 +65,7 @@ def callback(url, list_of_tuples):
     ch.setopt(pycurl.SSL_VERIFYPEER, 1)
     ch.setopt(pycurl.SSL_VERIFYHOST, 2)
     ch.setopt(pycurl.HTTPHEADER, [
-            "User-Agent: Richmond Callback Client"
+            "User-Agent: Vumi Callback Client"
             "Accept:"
         ])
     ch.setopt(pycurl.WRITEFUNCTION, data.write)

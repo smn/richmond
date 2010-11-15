@@ -4,9 +4,9 @@ from django.contrib.auth.models import User
 from time import time
 from datetime import datetime, timedelta
 
-from richmond.webapp.api.models import *
-from richmond.webapp.api.tests.utils import APIClient, mock_sent_messages
-from richmond.webapp.api.gateways.techsys.backend import Techsys
+from vumi.webapp.api.models import *
+from vumi.webapp.api.tests.utils import APIClient, mock_sent_messages
+from vumi.webapp.api.gateways.techsys.backend import Techsys
 
 class TechsysSMSHandlerTestCase(TestCase):
     

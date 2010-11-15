@@ -2,8 +2,8 @@ from twisted.python import log
 from twisted.python.log import logging
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from richmond.service import Worker, Consumer, Publisher
-from richmond.workers.truteq.util import RichmondSSMIFactory, SessionType, ussd_code_to_routing_key
+from vumi.service import Worker, Consumer, Publisher
+from vumi.workers.truteq.util import VumiSSMIFactory, SessionType, ussd_code_to_routing_key
 
 from alexandria.client import Client
 from alexandria.sessions.backend import DBBackend
@@ -128,7 +128,7 @@ class VumiConsumer(Consumer):
     This consumer consumes all incoming USSD messages on the *120*663*79#
     shortcode in a campaign specific queue.
     """
-    exchange_name = "richmond.ussd"
+    exchange_name = "vumi.ussd"
     exchange_type = "topic"
     durable = False
     queue_name = "ussd.truteq.test_campaign"
@@ -251,7 +251,7 @@ class VumiConsumer(Consumer):
     
 
 class VumiPublisher(Publisher):
-    exchange_name = "richmond.ussd"
+    exchange_name = "vumi.ussd"
     exchange_type = "topic"             # -> route based on pattern matching
     routing_key = 'ussd.truteq.s120s663s79h'
     durable = False                     # -> not created at boot

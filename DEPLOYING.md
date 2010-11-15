@@ -1,9 +1,9 @@
-Deploying Richmond
+Deploying Vumi
 ------------------
 
-The deploment of Richmond ties directly into how it is being developed with Git.
+The deploment of Vumi ties directly into how it is being developed with Git.
 
-  1.	All development of Richmond occurs in topical branches. Topical	branches 
+  1.	All development of Vumi occurs in topical branches. Topical	branches 
       are all named `topics/...`. For example `topics/smn-fabric-deploys`.
   2. 	When the new development is finished, `master` is rebased into the
       `topics/...` branch. If all tests pass then the `topics/...` branch is 
@@ -39,7 +39,7 @@ Start the virtualenv & make sure all the requirements are installed:
     (ve) $ pip install -r config/requirements.pip
 
 There isn't a limit on the number of environments. Every branch in git can be an
-environment. All environments will be installed in `/var/praekelt/richmond/`.
+environment. All environments will be installed in `/var/praekelt/vumi/`.
 For this example we'll walk through installing a `staging` environment.
 
 Before we start, update the `fabfile.py` and change `env.hosts` to point to the
@@ -58,7 +58,7 @@ Internally this first calls `fab layout:staging` to create the following
 layout directory:
 
     .
-    └── richmond
+    └── vumi
         └── staging
             ├── releases            # all timestamped releases go here
             └── shared              # all shared stuff that needs to be kept
@@ -70,7 +70,7 @@ layout directory:
                     └── pids
 
 Then it continues to checkout the repository into 
-`staging/shared/repositories/richmond` and switches to the branch `staging`. 
+`staging/shared/repositories/vumi` and switches to the branch `staging`. 
 If the repository already exists it instead does a `git pull` to pull in the 
 latest updates.
 
@@ -115,7 +115,7 @@ Other environments work exactly the same:
 
     (ve) $ fab deploy:production
 
-Will deploy to `/var/praekelt/richmond/production` with the same directory layout. 
+Will deploy to `/var/praekelt/vumi/production` with the same directory layout. 
 It'll switch to the `production` branch in the git repository.
 
 [fabric]: http://www.fabfile.org

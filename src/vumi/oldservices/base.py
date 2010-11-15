@@ -8,16 +8,16 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
 import txamqp.spec
 
-from richmond.amqp.base import RichmondAMQPFactory
-from richmond.errors import RichmondError
+from vumi.amqp.base import VumiAMQPFactory
+from vumi.errors import VumiError
 
 class AMQPService(Service):
     
-    username = 'richmond'
-    password = 'richmond'
+    username = 'vumi'
+    password = 'vumi'
     host = 'localhost'
     port = 5672
-    vhost = '/richmond'
+    vhost = '/vumi'
     spec = 'config/amqp-spec-0-8.xml'
     
     def __init__(self, **options):
@@ -45,7 +45,7 @@ class AMQPService(Service):
         returnValue(client)
     
     def startService(self):
-        factory = RichmondAMQPFactory(self.spec, self.vhost)
+        factory = VumiAMQPFactory(self.spec, self.vhost)
         # attach deferreds so we can keep track of (dis)connections and
         # start services as needed
         factory.onConnectionMade = self.onConnectionMade
@@ -57,7 +57,7 @@ class AMQPService(Service):
         log.msg("Stopping AMQP service")
     
 
-class RichmondService(MultiService):
+class VumiService(MultiService):
     """
     A base Service class that we can subclass, should contain all the AMQP
     boilerplate
@@ -89,21 +89,21 @@ class RichmondService(MultiService):
     
     @inlineCallbacks
     def on_connect(self, client):
-        log.msg("RichmondService connected %s" % client)
+        log.msg("VumiService connected %s" % client)
         self.amqp_client = client
         yield self.start(**self.get_config('service'))
         returnValue(client)
     
     @inlineCallbacks
     def on_disconnect(self, client):
-        log.msg("RichmondService disconnected %s" % client)
+        log.msg("VumiService disconnected %s" % client)
         self.amqp_client = None
         yield self.stop()
         returnValue(client)
     
     def ensure_amqp_service_is_ready(self):
         if not self.amqp_client:
-            raise RichmondError, "No amqp_client available. AMQPService " \
+            raise VumiError, "No amqp_client available. AMQPService " \
                                     "either not connected yet or it has " \
                                     "lost the connection to the broker."
         

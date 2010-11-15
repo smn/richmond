@@ -1,5 +1,5 @@
-from richmond.services.truteq.base import Publisher, Consumer, SessionType
-from richmond.services.worker import PubSubWorker
+from vumi.services.truteq.base import Publisher, Consumer, SessionType
+from vumi.services.worker import PubSubWorker
 from twisted.python import log
 
 from alexandria.client import Client
@@ -13,7 +13,7 @@ from alexandria.dsl.validators import pick_one
 """
 Issues that have surfaced when developing this:
 
-1.  Richmond does work with different transports but using different 
+1.  Vumi does work with different transports but using different 
     transports in the same menu does not work. For example; sending out an SMS
     in a USSD session. The menu items do not have access to the queue and
     so cannot publish any message to a consumer.

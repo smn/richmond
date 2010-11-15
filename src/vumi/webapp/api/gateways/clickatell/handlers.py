@@ -5,10 +5,10 @@ from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 from piston.utils import Mimer, FormValidationError
 
-from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
-from richmond.webapp.api import forms
-from richmond.webapp.api import signals
-from richmond.webapp.api.utils import specify_fields
+from vumi.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
+from vumi.webapp.api import forms
+from vumi.webapp.api import signals
+from vumi.webapp.api.utils import specify_fields
 
 from alexandria.loader.base import YAMLLoader
 from alexandria.dsl.utils import dump_menu

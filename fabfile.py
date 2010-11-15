@@ -25,10 +25,10 @@ def _setup_env(fn):
 def _setup_env_for(branch):
     env.branch = branch
     env.github_user = 'smn'
-    env.github_repo_name = 'richmond'
+    env.github_repo_name = 'vumi'
     env.github_repo = 'http://github.com/%(github_user)s/%(github_repo_name)s.git' % env
     
-    env.deploy_to = '/var/praekelt/richmond/%(branch)s' % env
+    env.deploy_to = '/var/praekelt/%(github_repo_name)s/%(branch)s' % env
     env.releases_path = "%(deploy_to)s/releases" % env
     env.current = "%(deploy_to)s/current" % env
     env.shared_path = "%(deploy_to)s/shared" % env
@@ -98,9 +98,9 @@ def deploy(branch):
             git.pull(branch)
     # 20100603_125848
     new_release_name = datetime.utcnow().strftime(RELEASE_NAME_FORMAT)
-    # /var/praekelt/richmond/staging/releases/20100603_125848
+    # /var/praekelt/vumi/staging/releases/20100603_125848
     new_release_path = _join(env.releases_path, new_release_name)
-    # /var/praekelt/richmond/staging/releases/20100603_125848/richmond
+    # /var/praekelt/vumi/staging/releases/20100603_125848/vumi
     # Django needs the project name as it's parent dir since that is 
     # automagically appended to the loadpath
     new_release_repo = _join(new_release_path, env.github_repo_name)
@@ -234,7 +234,7 @@ def start_webapp(branch, **kwargs):
     """
     _virtualenv(
         _join(env.current, env.github_repo_name),
-        twistd.start_command('richmond_webapp', **kwargs)
+        twistd.start_command('vumi_webapp', **kwargs)
     )
 
 @_setup_env
@@ -259,7 +259,7 @@ def restart_webapp(branch, **kwargs):
     """
     _virtualenv(
         _join(env.current, env.github_repo_name),
-        twistd.restart_command('richmond_webapp', **kwargs)
+        twistd.restart_command('vumi_webapp', **kwargs)
     )
 
 @_setup_env
@@ -282,7 +282,7 @@ def stop_webapp(branch, **kwargs):
     """
     _virtualenv(
         _join(env.current, env.github_repo_name),
-        twistd.stop_command('richmond_webapp', **kwargs)
+        twistd.stop_command('vumi_webapp', **kwargs)
     )
 
 @_setup_env

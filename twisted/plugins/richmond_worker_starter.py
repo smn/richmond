@@ -5,13 +5,13 @@ from twisted.application.service import IServiceMaker, Service
 from twisted.plugin import IPlugin
 from twisted.internet import reactor
 
-from richmond.service import Options, WorkerCreator
-from richmond.utils import load_class_by_string
-from richmond.errors import RichmondError
+from vumi.service import Options, WorkerCreator
+from vumi.utils import load_class_by_string
+from vumi.errors import VumiError
 
 # This is the actual service that is started, this the thing that runs
 # in the background and starts a worker.
-class RichmondService(Service):
+class VumiService(Service):
     
     # it receives the dictionary of options from the command line
     def __init__(self, options):
@@ -19,14 +19,14 @@ class RichmondService(Service):
     
     # Twistd calls this methods at boot
     def startService(self):
-        log.msg("Starting RichmondService")
+        log.msg("Starting VumiService")
         host = self.options.pop('hostname')
         port = self.options.pop('port')
         # the worker creator starts workers, give it what class you 
         # want to start and what options you want to pass along
         worker_class_name = self.options.pop("worker_class")
         if not worker_class_name:
-            raise RichmondError, "please specify --worker_class"
+            raise VumiError, "please specify --worker_class"
         
         # load the config file if specified
         config_file = self.options.pop('config')
@@ -43,11 +43,11 @@ class RichmondService(Service):
     
     # Twistd calls this method at shutdown
     def stopService(self):
-        log.msg("Stopping RichmondService")
+        log.msg("Stopping VumiService")
     
 
 
-# Extend the default Richmond options with whatever options your service needs
+# Extend the default Vumi options with whatever options your service needs
 class BasicSet(Options):
     optParameters = Options.optParameters + [
         ["worker_class", None, None, "class of a worker to start"],
@@ -55,19 +55,19 @@ class BasicSet(Options):
     ]
 
 # This create the service, runnable on command line with twistd
-class RichmondServiceMaker(object):
+class VumiServiceMaker(object):
     implements(IServiceMaker, IPlugin)
     # the name of our plugin, this will be the subcommand for twistd
-    # e.g. $ twistd -n richmond_worker_example_2 --option1= ...
+    # e.g. $ twistd -n vumi_worker_example_2 --option1= ...
     tapname = "start_worker"
     # description, also for twistd
-    description = "Start a Richmond worker"
+    description = "Start a Vumi worker"
     # what command line options does this service expose
     options = BasicSet
     
     def makeService(self, options):
-        return RichmondService(options)
+        return VumiService(options)
 
 # Announce the plugin as a service maker for twistd 
 # See: http://twistedmatrix.com/documents/current/core/howto/tap.html
-serviceMaker = RichmondServiceMaker()
+serviceMaker = VumiServiceMaker()

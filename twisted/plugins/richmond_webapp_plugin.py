@@ -11,7 +11,7 @@ class Options(usage.Options):
     optParameters = [
         ["config", "c", None, "Read options from config file", str],
         ['port', 'p', 8000, 'The port to run on', int],
-        ['django-settings', 's', 'richmond.webapp.settings', 'Value to be set as DJANGO_SETTINGS_MODULE', str],
+        ['django-settings', 's', 'vumi.webapp.settings', 'Value to be set as DJANGO_SETTINGS_MODULE', str],
     ]
     
     def opt_config(self, path):
@@ -44,13 +44,13 @@ class Options(usage.Options):
     opt_c = opt_config
 
 
-class RichmondWebappServiceMaker(object):
+class VumiWebappServiceMaker(object):
     """
     Run Django in as a Twisted service
     """
     implements(service.IServiceMaker, plugin.IPlugin)
-    tapname = "richmond_webapp"
-    description = "The richmond webapp, providing webhooks / callbacks and a REST api"
+    tapname = "vumi_webapp"
+    description = "The vumi webapp, providing webhooks / callbacks and a REST api"
     options = Options
     
     def makeService(self, options):
@@ -62,4 +62,4 @@ class RichmondWebappServiceMaker(object):
         site = server.Site(resource)
         return internet.TCPServer(options['port'], site)
 
-serviceMaker = RichmondWebappServiceMaker()
+serviceMaker = VumiWebappServiceMaker()

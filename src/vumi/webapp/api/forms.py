@@ -1,5 +1,5 @@
 from django import forms
-from richmond.webapp.api.models import SentSMS, URLCallback, ReceivedSMS
+from vumi.webapp.api.models import SentSMS, URLCallback, ReceivedSMS
 
 class SentSMSForm(forms.ModelForm):
     class Meta:

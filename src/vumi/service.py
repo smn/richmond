@@ -4,7 +4,7 @@ from twisted.internet import protocol, reactor
 from txamqp.client import TwistedDelegate
 from txamqp.content import Content
 from txamqp.protocol import AMQClient
-from richmond.errors import RichmondError
+from vumi.errors import VumiError
 import txamqp
 import json
 import sys
@@ -16,9 +16,9 @@ class Options(usage.Options):
     optParameters = [
         ["hostname", None, "127.0.0.1", "AMQP broker"],
         ["port", None, 5672, "AMQP port", int],
-        ["username", None, "richmond", "AMQP username"],
-        ["password", None, "richmond", "AMQP password"],
-        ["vhost", None, "/richmond", "AMQP virtual host"],
+        ["username", None, "vumi", "AMQP username"],
+        ["password", None, "vumi", "AMQP password"],
+        ["vhost", None, "/vumi", "AMQP virtual host"],
         ["specfile", None, "config/amqp-spec-0-8.xml", "AMQP spec file"],
     ]
 
@@ -40,7 +40,7 @@ class Worker(AMQClient):
     def startWorker(self):
         # I hate camelCasing method but since Twisted has it as a
         # standard I voting to stick with it
-        raise RichmondError, "You need to subclass Worker and its " \
+        raise VumiError, "You need to subclass Worker and its " \
                              "startWorker method"
     
     @inlineCallbacks
@@ -107,7 +107,7 @@ class Worker(AMQClient):
 
 class Consumer(object):
     
-    exchange_name = "richmond"
+    exchange_name = "vumi"
     exchange_type = "direct"
     durable = False
     
@@ -144,7 +144,7 @@ class Consumer(object):
     
 
 class Publisher(object):
-    exchange_name = "richmond"
+    exchange_name = "vumi"
     exchange_type = "direct"
     routing_key = "routing_key"
     durable = False

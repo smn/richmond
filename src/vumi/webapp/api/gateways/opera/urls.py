@@ -1,9 +1,9 @@
 from django.conf.urls.defaults import *
 from piston.resource import Resource
 from piston.authentication import HttpBasicAuthentication
-from richmond.webapp.api.gateways.opera import handlers
+from vumi.webapp.api.gateways.opera import handlers
 
-ad = {'authentication': HttpBasicAuthentication(realm="Richmond")}
+ad = {'authentication': HttpBasicAuthentication(realm="Vumi")}
 
 sms_receipt_resource = Resource(handler=handlers.SMSReceiptHandler, **ad)
 sms_send_resource = Resource(handler=handlers.SendSMSHandler, **ad)

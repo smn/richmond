@@ -3,16 +3,16 @@ from twisted.python.log import logging
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet import reactor
 
-from richmond.service import Worker, Consumer, Publisher
-from richmond.workers.truteq.util import RichmondSSMIFactory, SessionType, ussd_code_to_routing_key
+from vumi.service import Worker, Consumer, Publisher
+from vumi.workers.truteq.util import VumiSSMIFactory, SessionType, ussd_code_to_routing_key
 
 class TruTeqConsumer(Consumer):
     """
     This consumer creates the generic outbound USSD transport.
-    Anything published to the `richmond.ussd` exchange with 
+    Anything published to the `vumi.ussd` exchange with 
     routing key ussd.truteq.* (* == single word match, # == zero or more words)
     """
-    exchange_name = "richmond.ussd"
+    exchange_name = "vumi.ussd"
     exchange_type = "topic"
     durable = False
     queue_name = "ussd.truteq"
@@ -29,7 +29,7 @@ class TruTeqConsumer(Consumer):
 class TruTeqPublisher(Publisher):
     """
     This publisher publishes all incoming USSD messages to the
-    `richmond.ussd` exchange, its default routing key is `ussd.fallback`
+    `vumi.ussd` exchange, its default routing key is `ussd.fallback`
     but every new message that comes in has the USSD code as the first message.
     The transport keeps this USSD code in an internal memory based dictionary
     and uses it as the routing key for the message being published. 
@@ -37,7 +37,7 @@ class TruTeqPublisher(Publisher):
     Successive messages coming from the client do not have the USSD code and 
     the dictionary is checked for what routing key should be used.
     """
-    exchange_name = "richmond.ussd"
+    exchange_name = "vumi.ussd"
     exchange_type = "topic"             # -> route based on pattern matching
     routing_key = 'ussd.fallback'       # -> overriden in publish method
     durable = False                     # -> not created at boot
@@ -68,7 +68,7 @@ class USSDTransport(Worker):
         self.storage = {}
         
         # start the USSD transport
-        factory = RichmondSSMIFactory(username, password)
+        factory = VumiSSMIFactory(username, password)
         factory.onConnectionMade.addCallback(self.ssmi_connected)
         reactor.connectTCP(host, port, factory)
     

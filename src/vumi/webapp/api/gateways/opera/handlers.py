@@ -8,9 +8,9 @@ from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime, validate
 from piston.utils import Mimer, FormValidationError
 
-from richmond.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
-from richmond.webapp.api import forms, signals
-from richmond.webapp.api.utils import require_content_type, specify_fields
+from vumi.webapp.api.models import SentSMS, ReceivedSMS, URLCallback
+from vumi.webapp.api import forms, signals
+from vumi.webapp.api.utils import require_content_type, specify_fields
 
 import pystache
 import iso8601

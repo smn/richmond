@@ -1,5 +1,5 @@
-from richmond.services.truteq.base import Publisher, Consumer, SessionType
-from richmond.services.worker import PubSubWorker
+from vumi.services.truteq.base import Publisher, Consumer, SessionType
+from vumi.services.worker import PubSubWorker
 from twisted.python import log
 
 class EchoConsumer(Consumer):

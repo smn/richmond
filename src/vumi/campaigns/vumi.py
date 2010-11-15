@@ -1,5 +1,5 @@
-from richmond.services.truteq.base import Publisher, Consumer, SessionType
-from richmond.services.worker import PubSubWorker
+from vumi.services.truteq.base import Publisher, Consumer, SessionType
+from vumi.services.worker import PubSubWorker
 from twisted.python import log
 
 from alexandria.client import Client
@@ -10,7 +10,7 @@ from alexandria.dsl.validators import pick_one
 class Backend(object):
     """
     An in memory backend, this should sometime be made a persistent backend
-    for the campaigns. Neither Richmond or Alexandria care what type of 
+    for the campaigns. Neither Vumi or Alexandria care what type of 
     backend is used.
     """
     def __init__(self):

@@ -1,4 +1,4 @@
-from richmond.webapp.api.utils import callback
+from vumi.webapp.api.utils import callback
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 

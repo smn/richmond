@@ -19,7 +19,7 @@ class SessionType(object):
     TIMEOUT = client.SSMI_USSD_TYPE_TIMEOUT
 
 
-class RichmondSSMIProtocol(client.SSMIClient):
+class VumiSSMIProtocol(client.SSMIClient):
     """
     Subclassing the protocol to avoid me having to
     work with callbacks to do authorization
@@ -48,12 +48,12 @@ class RichmondSSMIProtocol(client.SSMIClient):
         self.factory.onConnectionLost.callback(self)
 
 
-class RichmondSSMIFactory(client.SSMIFactory):
+class VumiSSMIFactory(client.SSMIFactory):
     """
     Subclassed the factory to allow me to work with my custom subclassed
     protocol
     """
-    protocol = RichmondSSMIProtocol
+    protocol = VumiSSMIProtocol
 
     def __init__(self, *args, **kwargs):
         self.args = args

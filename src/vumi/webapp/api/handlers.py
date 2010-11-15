@@ -3,8 +3,8 @@ from piston.handler import BaseHandler
 from piston.utils import rc, throttle, require_mime
 from piston.utils import Mimer, FormValidationError, rc
 
-from richmond.webapp.api.models import URLCallback
-from richmond.webapp.api.forms import URLCallbackForm
+from vumi.webapp.api.models import URLCallback
+from vumi.webapp.api.forms import URLCallbackForm
 
 from alexandria.loader.base import YAMLLoader
 from alexandria.dsl.utils import dump_menu

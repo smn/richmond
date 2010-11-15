@@ -5,18 +5,18 @@ from time import time
 import json
 from datetime import datetime, timedelta
 
-from richmond.webapp.api.signals import *
-from richmond.webapp.api.models import *
-from richmond.webapp.api.tests.utils import APIClient
+from vumi.webapp.api.signals import *
+from vumi.webapp.api.models import *
+from vumi.webapp.api.tests.utils import APIClient
 
 import logging
-LOG_FILENAME = 'logs/richmond.testing.log'
+LOG_FILENAME = 'logs/vumi.testing.log'
 logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
 
 class PyCurlBugTestCase(TestCase):
     
     def test_callback_unicode_warning(self):
-        from richmond.webapp.api.utils import callback
+        from vumi.webapp.api.utils import callback
         self.assertRaises(RuntimeError, callback, 'http://localhost/', (
             (u'key', 'value'), # unicode keys or values aren't allowed
         ))
@@ -34,7 +34,7 @@ class ConversationHandlerTestCase(TestCase):
         # create the user we need to be authorized
         self.user = User.objects.get(username='api')
         # load the yaml data
-        fp = open('src/richmond/webapp/api/test_data/devquiz.yaml', 'r')
+        fp = open('src/vumi/webapp/api/test_data/devquiz.yaml', 'r')
         self.yaml_conversation = ''.join(fp.readlines())
     
     def tearDown(self):

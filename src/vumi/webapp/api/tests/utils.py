@@ -1,6 +1,6 @@
 import base64
 from django.test.client import Client
-from richmond.webapp.api.models import SentSMS
+from vumi.webapp.api.models import SentSMS
 
 class APIClient(Client):
     

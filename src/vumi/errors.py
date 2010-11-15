@@ -1,1 +1,1 @@
-class RichmondError(Exception): pass
+class VumiError(Exception): pass

@@ -14,9 +14,9 @@ PROJECT_NAME = basename(APP_ROOT)
 MANAGERS = ADMINS
 
 DATABASE_ENGINE = 'postgresql_psycopg2'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-DATABASE_NAME = 'richmond'             # Or path to database file if using sqlite3.
-DATABASE_USER = 'richmond'             # Not used with sqlite3.
-DATABASE_PASSWORD = 'richmond'         # Not used with sqlite3.
+DATABASE_NAME = 'vumi'             # Or path to database file if using sqlite3.
+DATABASE_USER = 'vumi'             # Not used with sqlite3.
+DATABASE_PASSWORD = 'vumi'         # Not used with sqlite3.
 DATABASE_HOST = 'localhost'            # Set to empty string for localhost. Not used with sqlite3.
 DATABASE_PORT = ''             # Set to empty string for default. Not used with sqlite3.
 
@@ -67,7 +67,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 )
 
-ROOT_URLCONF = 'richmond.webapp.urls'
+ROOT_URLCONF = 'vumi.webapp.urls'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -83,7 +83,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.sites',
-    'richmond.webapp.api',
+    'vumi.webapp.api',
     'celery',
 )
 
@@ -91,7 +91,7 @@ INSTALLED_APPS = (
 AUTH_PROFILE_MODULE = 'api.Profile'
 
 # we want our workers to be async
-RICHMOND_WORKERS_ASYNC = False
+VUMI_WORKERS_ASYNC = False
 
 # for Piston
 PISTON_DISPLAY_ERRORS = True
@@ -99,41 +99,41 @@ PISTON_DISPLAY_ERRORS = True
 # for Celery
 BROKER_HOST = "localhost"
 BROKER_PORT = 5672
-BROKER_USER = "richmond"
-BROKER_PASSWORD = "richmond"
-BROKER_VHOST = "/richmond"
+BROKER_USER = "vumi"
+BROKER_PASSWORD = "vumi"
+BROKER_VHOST = "/vumi"
 
 if DEBUG:
     CELERYD_LOG_LEVEL = 'DEBUG'
     CELERYD_LOG_FILE = None
 else:
-    CELERYD_LOG_FILE = 'logs/richmond.celeryd.log'
+    CELERYD_LOG_FILE = 'logs/vumi.celeryd.log'
 
 CELERY_QUEUES = {
     "default": {
-        "exchange": "richmond",
-        "binding_key": "richmond.webapp",
+        "exchange": "vumi",
+        "binding_key": "vumi.webapp",
     },
     "sms_send": {
-        "exchange": "richmond",
-        "binding_key": "richmond.webapp.sms.send",
+        "exchange": "vumi",
+        "binding_key": "vumi.webapp.sms.send",
     },
     "sms_receive": {
-        "exchange": "richmond",
-        "binding_key": "richmond.webapp.sms.receive",
+        "exchange": "vumi",
+        "binding_key": "vumi.webapp.sms.receive",
     },
     "sms_receipt": {
-        "exchange": "richmond",
-        "binding_key": "richmond.webapp.sms.receipt",
+        "exchange": "vumi",
+        "binding_key": "vumi.webapp.sms.receipt",
     },
 }
 CELERY_DEFAULT_QUEUE = "default"
 CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
-CELERY_DEFAULT_ROUTING_KEY = "richmond.webapp"
-# set the environment RICHMOND_SKIP_QUEUE to have the Celery tasks evaluated
+CELERY_DEFAULT_ROUTING_KEY = "vumi.webapp"
+# set the environment VUMI_SKIP_QUEUE to have the Celery tasks evaluated
 # immediately, skipping the queue.
 import os
-CELERY_ALWAYS_EAGER = os.environ.get('RICHMOND_SKIP_QUEUE', False)
+CELERY_ALWAYS_EAGER = os.environ.get('VUMI_SKIP_QUEUE', False)
 
 # for Clickatell
 from clickatell import constants as cc

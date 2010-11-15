@@ -2,7 +2,7 @@ from twisted.python import log
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet import reactor
 
-from richmond.service import Worker, Consumer, Publisher
+from vumi.service import Worker, Consumer, Publisher
 
 class ExampleConsumer(Consumer):
     

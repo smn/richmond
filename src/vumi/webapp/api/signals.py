@@ -1,7 +1,7 @@
 import logging
 from django.dispatch import Signal
-from richmond.webapp.api.models import Profile
-from richmond.webapp.api.tasks import SendSMSTask, ReceiveSMSTask, DeliveryReportTask
+from vumi.webapp.api.models import Profile
+from vumi.webapp.api.tasks import SendSMSTask, ReceiveSMSTask, DeliveryReportTask
 
 # custom signals for the api
 sms_scheduled = Signal(providing_args=['instance', 'pk'])
@@ -39,7 +39,7 @@ def create_profile_worker(user):
     Profile.objects.create(user=user)
 
 
-from richmond.webapp.api.models import SentSMS, ReceivedSMS
+from vumi.webapp.api.models import SentSMS, ReceivedSMS
 sms_scheduled.connect(sms_scheduled_handler, sender=SentSMS)
 sms_received.connect(sms_received_handler, sender=ReceivedSMS)
 sms_receipt.connect(sms_receipt_handler, sender=SentSMS)

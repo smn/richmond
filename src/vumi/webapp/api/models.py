@@ -58,7 +58,7 @@ CLICKATELL_MESSAGE_STATUSES = (
 )
 
 class SentSMS(models.Model):
-    """An Message to be sent through Richmond"""
+    """An Message to be sent through Vumi"""
     user = models.ForeignKey(User)
     to_msisdn = models.CharField(blank=False, max_length=100)
     from_msisdn = models.CharField(blank=False, max_length=100)

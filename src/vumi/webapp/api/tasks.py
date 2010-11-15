@@ -2,19 +2,19 @@ import logging
 from django.conf import settings
 from celery.task import Task
 from celery.task.http import HttpDispatchTask
-from richmond.webapp.api.models import SentSMS, ReceivedSMS
-from richmond.webapp.api.utils import callback
+from vumi.webapp.api.models import SentSMS, ReceivedSMS
+from vumi.webapp.api.utils import callback
 
 from clickatell.api import Clickatell
 from clickatell.response import OKResponse, ERRResponse
 
 # simple wrapper for Opera's XML-RPC service
-from richmond.webapp.api.gateways.opera.backend import Opera
-from richmond.webapp.api.gateways.e_scape.backend import E_Scape
-from richmond.webapp.api.gateways.techsys.backend import Techsys
+from vumi.webapp.api.gateways.opera.backend import Opera
+from vumi.webapp.api.gateways.e_scape.backend import E_Scape
+from vumi.webapp.api.gateways.techsys.backend import Techsys
 
 class SendSMSTask(Task):
-    routing_key = 'richmond.webapp.sms.send'
+    routing_key = 'vumi.webapp.sms.send'
     
     def send_sms_with_clickatell(self, send_sms):
         logger = self.get_logger(pk=send_sms.pk)
@@ -105,7 +105,7 @@ class SendSMSTask(Task):
                             % send_sms.transport_name)
 
 class ReceiveSMSTask(Task):
-    routing_key = 'richmond.webapp.sms.receive'
+    routing_key = 'vumi.webapp.sms.receive'
     
     """FIXME: We can probably use the HttpDispatchTask instead of this"""
     def run(self, pk):
@@ -120,7 +120,7 @@ class ReceiveSMSTask(Task):
 
 
 class DeliveryReportTask(Task):
-    routing_key = 'richmond.webapp.sms.receipt'
+    routing_key = 'vumi.webapp.sms.receipt'
     
     """FIXME: We can probably use the HttpDispatchTask instead of this"""
     def run(self, pk, receipt):
