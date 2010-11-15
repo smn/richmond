@@ -1,5 +1,5 @@
 Vumi
-========
+====
 
 PubSub platform for connecting online messaging services such as SMS and USSD to a horizontally scalable backend of workers.
 
@@ -35,7 +35,7 @@ Setup a virtual python environment in the directory `ve`. The `--no-site-package
 
     $ virtualenv --no-site-packages ./ve/ 
 
-Start the environment by sourcing `activate`. This'll prepend the name of the virtual environment to your shell prompt, informing you that the prompt is still active.
+Start the environment by sourcing `activate`. This'll prepend the name of the virtual environment to your shell prompt, informing you that the virtual environment is active.
 
         $ source ve/bin/activate
 
@@ -46,93 +46,38 @@ Install the required libraries with pip into the virtual environment. They're pu
     $ pip -E ./ve/ install -r config/requirements.pip
  
 Running Vumi
-----------------
+------------
 
 Vumi is implemented using a [Pub/Sub][pubsub] design using the [Competing Consumer pattern][competing consumers]. 
 
-Vumi is started as a `vumi_service` plugin for Twisted.
+Vumi transports and workers are both started with the `start_worker` Twisted plugin.
 
-Every Vumi services connects to RabbitMQ and allows for both consuming and publishing of messages. Vumi allows for connecting incoming and outoing messages to a backend of workers.
-
-Vumi currently has a TruTeq service that allows for receiving and sending of USSD messages over TruTeq's SSMI protocol. The TruTeq service connects to the SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
+Vumi currently has a TruTeq transport that allows for receiving and sending of USSD messages over TruTeq's SSMI protocol. The TruTeq service connects to the SSMI service and connects to RabbitMQ. It publishes all incoming messages over SSMI as JSON to the receive queue in RabbitMQ and it publishes all incoming messages over the send queue back to TruTeq over SSMI.
 
 The worker reads all incoming JSON objects on the receive queue and publishes a response back to the send queue for the TruTeq service to publish over SSMI.
 
 Make sure you update the configuration file in `config/truteq.cfg` and start the broker:
 
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.service.pid -n \     
-        vumi_service \
-        --service=vumi.services.truteq.service.USSDService \
-        --config=config/truteq.cfg
+    (ve)$ twistd -n \
+            --pidfile=./tmp/pids/ussd_transport.pid \
+            --logfile=./logs/ussd_transport.log \
+            start_worker \ 
+            --worker_class=richmond.workers.truteq.transport.USSDTransport \
+            --config=environments/truteq.yaml
     ...
  
     $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.worker.1.pid -n \
-        vumi_service \
-        --service vumi.campaigns.vumi.VumiUSSDWorker \
-        --config=config/truteq.cfg
+    (ve)$ twistd -n \
+            --pidfile=./tmp/pids/default_demo_worker.pid \
+            --logfile=./logs/default_demo_worker.log \
+            start_worker \
+            --worker_class=richmond.campaigns.default_demo.USSDWorker
     ...
 
-The worker's --service/-s option allows you to specify a class that subclasses `vumi.services.base.VumiService`.
+The worker's `--worker_class` option allows you to specify a class that subclasses `vumi.service.Worker`.
 
 Remove the `-n` option to have `twistd` run in the background. The `--pidfile` option isn't necessary, `twistd` will use 'twistd.pid' by default. However, since we could have multiple brokers and workers running at the same time on the same machine it is good to be explicit since `twistd` will assume an instance is already running if 'twistd.pid' already exists.
-
-Creating a custom worker
-------------------------
-
-We'll create a worker that responds to USSD json objects. We'll subclass the `vumi.services.worker.PubSubWorker`. Workers should always start a queue consumer and a queue publisher. For our example it should start a publisher for publishing outgoing USSD messages to the TruTeq service and it should start a consumer for receiving incoming USSD messages from the TruTeq service.
-
-A basic TruTeq consumer is provided and it provides the following functions.
-They're called for each of the relevant messages that arrive over the queue.
-
-    * new_ussd_session(msisdn, message)
-    * existing_ussd_session(msisdn, message)
-    * timed_out_ussd_session(msisdn, message)
-    * end_ussd_session(msisdn, message)
-
-This is what the code for a consumer for TruTeq would look like:
-
-    from vumi.services.truteq.base import Publisher, Consumer, SessionType
-    from vumi.services.worker import PubSubWorker
-    from twisted.python import log
-
-    class EchoConsumer(Consumer):
-    
-        def new_ussd_session(self, msisdn, message):
-            self.reply(msisdn, "Hello, this is an echo service for " \
-                                "testing. Reply with whatever. Reply '0' " \
-                                "to end session.", 
-                                SessionType.existing)
-    
-        def existing_ussd_session(self, msisdn, message):
-            if message == "0":
-                self.reply(msisdn, "quitting, goodbye!", SessionType.end)
-            else:
-                self.reply(msisdn, message, SessionType.existing)
-    
-        def timed_out_ussd_session(self, msisdn, message):
-            log.msg('%s timed out, removing client' % msisdn)
-    
-        def end_ussd_session(self, msisdn, message):
-            log.msg('%s ended the session, removing client' % msisdn)
-    
-    
-    
-    class USSDWorker(PubSubWorker):
-        consumer_class = EchoConsumer
-        publisher_class = Publisher
-    
-
-Start the worker:
-
-    $ source ve/bin/activate
-    (ve)$ twistd --pidfile=tmp/pids/twistd.vumi.truteq.worker.2.pid -n \
-        vumi_service \
-        --service=vumi.campaigns.example.USSDWorker
-        --config=config/truteq.conf
-    ...
-
 
 Running the Webapp / API
 ------------------------
@@ -166,9 +111,9 @@ Run the tests for the webapp API with `./manage.py` as well:
 Scheduling SMS for delivery via the API
 ---------------------------------------
 
-The API is HTTP with concepts borrowed from REST. All URLs have a rate limit of 60 hits per 60 seconds and require HTTP Basic Authentication.
+The API is HTTP with concepts borrowed from REST. All URLs have rate limiting and require HTTP Basic Authentication.
 
-There are currently two transports available. [Clickatell][clickatell] or [Opera][opera]. The API for both is exactly the same, just replace '/clickatell/' for '/opera/' in the URL.
+There are currently a number of SMS transports available. [Clickatell][clickatell], [Opera][opera], [E-Scape][e-scape] and [Techsys][Techsys]. The API for both is exactly the same, just replace '/clickatell/' with '/opera/' or any of the others in the URL.
 
 Sending via Clickatell:
 
@@ -437,3 +382,5 @@ For a complete listing of the command line options available, use the help comma
 [celery]: http://ask.github.com/celery
 [clickatell]: http://clickatell.com
 [opera]: http://operainteractive.co.za/
+[Techsys]: http://www.techsys.co.za/
+[E-Scape]: http://www.escapetech.net/
